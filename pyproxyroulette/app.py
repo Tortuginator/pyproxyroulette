@@ -1,15 +1,8 @@
-import requests, warnings, re 
+import requests, warnings, re, random
 
 class ProxyRoulette(object):
     ValidIpAddressRegex = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$";
-    def __init__(
-                self,
-                myIP = None,
-                securitylevel = 3,
-                maxRetries = 5,
-                maxReqestsThreshold = 100,
-                ):
-
+    def __init__(self,myIP = None,securitylevel = 3,maxRetries = 5,maxReqestsThreshold = 100):
 
         self.setDefaults()
         if not 0 <= int(securitylevel) <= 3:
@@ -19,7 +12,7 @@ class ProxyRoulette(object):
             self.securitylevel = int(securitylevel)
 
         if myIP == None:
-            self.originalIP = getIP()
+            self.originalIP = self.getIP()
         else:
             if re.match(ValidIpAddressRegex, str(myIP)):
                 self.originalIP = myIP
@@ -27,13 +20,15 @@ class ProxyRoulette(object):
                 pass
                 #TODO:raise value error
 
-        self.proxies = self.getProxyList()
+        self.proxies = self.proxyGatherer()
+        self.currentProxy = None
         #Init some variables
         #The request counter gets incremented for reach request made through a proxy. Then it hits the maxRequests Threshold a new proxy is selected
-        self.requestCounter = 0
+        self.requestCounter = maxReqestsThreshold + 1
         self.requestRetries = 0
+        self.maxReqestsThreshold = maxReqestsThreshold
 
-    def setDefaults(self):
+    def setDefaults(self): 
         """Sets all default values"""
 
         #securitylevel describes the security of the proxy connection. 1 beeing the weakest and 3 the strongest.
@@ -42,20 +37,25 @@ class ProxyRoulette(object):
         #level 2: Proxy tells server, that is is a proxied connection, but the IP in the header is not yours
         #level 3 (Elite): Proxy does not tell the server, that it is a proxy 
         #BE AWARE: increasing the security level will decrease the number of proxies available
-
         self.securityLevel = 3
 
         #force only SSL proxy usage
         self.requireSSL = False
 
         #force only to use proxies, which are not blocked by google
-        self.reqireGoogleCompatibility = False
+        self.requireGoogleCompatibility = False
 
         #sets the validity checking method this can be customized
         self.responseValidity = self.isValidResponse
 
         #sets the verification method to determine if we really are bedind a proxy
-        self.proxyVerificator = self.reviewProxy
+        self.proxyVerificator = self.isValidProxy
+
+        #method downloading the proxy list
+        self.proxyGatherer = self.getProxyList
+
+        #method to test the proxy
+        self.proxyTest = self.testProxy
 
         #Maximal number of retries with different proxies for a single url before raising a not reachable error
         self.maxRetries = 5
@@ -92,7 +92,7 @@ class ProxyRoulette(object):
         """calls icanhazip.com to retrieve the ip. This request can be both proxied & unprovied"""
         ip_request = requests.get("http://icanhazip.com/",proxies = proxy,timeout = self.proxyVerificatorTimeout)
         ip_candidates = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", str(ip_request.content))
-        if len(ip_candidate) == 1:
+        if len(ip_candidates) == 1:
             if self.proxylengthVerification:
                 if len(ip_request.content) < 100:
                     return ip_candidates[0]
@@ -102,12 +102,42 @@ class ProxyRoulette(object):
         else:
             return None
 
+    def dictFromProxy(self):
+        if self.requireSSL:
+            return {"https":self.currentProxy,"http":self.currentProxy}
+        else:
+            return {"http":self.currentProxy}
+
     def getProxy(self):
         """Returns a valid proxy as a string. This method calls the proxychanging method to check if it has to be changed"""
-        pass
+        self.requestCounter +=1
+        if self.requestCounter >= self.maxReqestsThreshold:
+            self.selectNewProxy()
+        return self.dictFromProxy()
 
     def selectNewProxy(self):
         self.requestCounter = 0
+        possibleProxies = []
+        #Structure: proxy - seclvl - ssl - google
+        for i in self.proxies:
+            if self.requireGoogleCompatibility:
+                if not i[3]:continue;
+            if self.securitylevel < i[1]:
+                continue
+            if self.requireSSL:
+                if not i[2]:continue;
+            possibleProxies.append(i)
+
+        if len(possibleProxies) == 0:
+            pass
+            #raise serious error
+
+        #random.randint is not secure. But in this case this is not reqired!
+        selected = random.randint(0,len(possibleProxies)-1)
+        self.currentProxy = possibleProxies[selected][0]
+        if not self.proxyTest(self.dictFromProxy()):
+            self.selectNewProxy()
+        return self.currentProxy
 
     def isValidResponse(self,request):
         """Decides whereas the request returned a valid response"""
@@ -118,6 +148,14 @@ class ProxyRoulette(object):
             return False
         return True
 
+    def testProxy(self,proxy):
+        try:
+            requests.get("http://news.ycombinator.com/",proxies = proxy,timeout = self.proxyVerificatorTimeout)
+            return True
+        except Exception as e:
+            raise e
+            return False
+
     def isValidProxy(self,proxy):
         """calls a webpage which returns the IP-address of the requestee. In the best case, this is the ip of the proxy"""
         ip = self.getIP(proxy = proxy)
@@ -125,24 +163,23 @@ class ProxyRoulette(object):
             return True
         return False
 
-    def request(self, uri, method='GET', **kwargs):
+    def get(self, uri, **kwargs):
         request_args = {
-            'uri': uri,
-            'method': method
+            'proxies':self.dictFromProxy()
         }
-        self.requestCounter +=1
         request_args.update(kwargs)
+        self.requestCounter +=1
         try:
-            response = requests.request(**request_args)
+            response = requests.get(uri,**request_args)
         except requests.exceptions.Timeout as e:
             #TODO:proper handling
             raise e
-        if self.responseValidity(self,response):
+        if self.responseValidity(response):
             rr = response
         else:
             if self.maxRetries <= self.requestRetries:
                 self.maxRetries +=1
-                rr = self.request(**request_args)
+                rr = self.get(url,**request_args)
             else:
                 self.requestRetries = 0
                 rr = None
