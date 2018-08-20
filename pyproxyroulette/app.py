@@ -20,7 +20,7 @@ class ProxyRoulette(object):
                 pass
                 #TODO:raise value error
 
-        self.proxies = self.proxyGatherer()
+        self.proxy = self.proxyGatherer()
         self.currentProxy = None
         #Init some variables
         #The request counter gets incremented for reach request made through a proxy. Then it hits the maxRequests Threshold a new proxy is selected
@@ -36,13 +36,13 @@ class ProxyRoulette(object):
         #level 1: Uses proxy, but header contains your IP
         #level 2: Proxy tells server, that is is a proxied connection, but the IP in the header is not yours
         #level 3 (Elite): Proxy does not tell the server, that it is a proxy 
-        #BE AWARE: increasing the security level will decrease the number of proxies available
+        #BE AWARE: increasing the security level will decrease the number of proxy available
         self.securityLevel = 3
 
         #force only SSL proxy usage
         self.requireSSL = False
 
-        #force only to use proxies, which are not blocked by google
+        #force only to use proxy, which are not blocked by google
         self.requireGoogleCompatibility = False
 
         #sets the validity checking method this can be customized
@@ -57,7 +57,7 @@ class ProxyRoulette(object):
         #method to test the proxy
         self.proxyTest = self.testProxy
 
-        #Maximal number of retries with different proxies for a single url before raising a not reachable error
+        #Maximal number of retries with different proxy for a single url before raising a not reachable error
         self.maxRetries = 5
 
         #timeout for the ip request
@@ -67,7 +67,7 @@ class ProxyRoulette(object):
         self.proxylengthVerification = True
 
         #init the proxylist
-        self.proxies = []
+        self.proxy = []
 
     def getProxyList(self):
         proxylist = requests.get("https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list.txt")
@@ -88,7 +88,7 @@ class ProxyRoulette(object):
             proxyProcessed.append((i_uri,i_secLevel,i_ssl,i_google))
         return proxyProcessed
 
-    def getIP(self,proxy = ""):
+    def getIP(self,proxy = {}):
         """calls icanhazip.com to retrieve the ip. This request can be both proxied & unprovied"""
         ip_request = requests.get("http://icanhazip.com/",proxies = proxy,timeout = self.proxyVerificatorTimeout)
         ip_candidates = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", str(ip_request.content))
@@ -117,25 +117,30 @@ class ProxyRoulette(object):
 
     def selectNewProxy(self):
         self.requestCounter = 0
-        possibleProxies = []
+        possibleProxy = []
         #Structure: proxy - seclvl - ssl - google
-        for i in self.proxies:
+        for i in self.proxy:
             if self.requireGoogleCompatibility:
                 if not i[3]:continue;
             if self.securitylevel < i[1]:
                 continue
             if self.requireSSL:
                 if not i[2]:continue;
-            possibleProxies.append(i)
+            possibleProxy.append(i)
 
-        if len(possibleProxies) == 0:
+        if len(possibleProxy) == 0:
             pass
             #raise serious error
 
         #random.randint is not secure. But in this case this is not reqired!
-        selected = random.randint(0,len(possibleProxies)-1)
-        self.currentProxy = possibleProxies[selected][0]
-        if not self.proxyTest(self.dictFromProxy()):
+        selected = random.randint(0,len(possibleProxy)-1)
+        self.currentProxy = possibleProxy[selected][0]
+        try:
+            if not self.proxyVerificator(self.dictFromProxy()) or not self.proxyTest(self.dictFromProxy()):
+                self.selectNewProxy()
+        except requests.exceptions.ConnectTimeout:
+            self.selectNewProxy()
+        except requests.exceptions.ProxyError:
             self.selectNewProxy()
         return self.currentProxy
 
@@ -159,6 +164,7 @@ class ProxyRoulette(object):
     def isValidProxy(self,proxy):
         """calls a webpage which returns the IP-address of the requestee. In the best case, this is the ip of the proxy"""
         ip = self.getIP(proxy = proxy)
+        print(ip,self.originalIP)
         if ip != self.originalIP:
             return True
         return False
