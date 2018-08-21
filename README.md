@@ -9,7 +9,7 @@ pr.get("http://github.com")
 ```
 ### Initialisation parameters
 ```python
-pr = Proxyroulette(myIP = None,
+pr = ProxyRoulette(myIP = None,
                    securitylevel = 3,
                    maxRetries = 5,
                    maxReqestsThreshold = 100,
@@ -18,8 +18,8 @@ pr = Proxyroulette(myIP = None,
 ```
 | Parameter | Description |
 | --------- | ----------- |
-| myIP | ProxyRoulette needs to know your real IP to compare against to ensure your real ip is hidden. This ip is usually determined automatically, but you can provide one as well |
-| securityLevel | between 1 and 3, 3 beeing the best. |
+| myIP | ProxyRoulette needs to know your real IP to compare against the proxys IP to ensure your real ip is hidden. It is usually determined automatically, but you can provide it well |
+| securityLevel | between 1 and 3, 3 beeing the best. level 1 uses a proxy, but sends your real ip in the header. Level 2 semds some random ip in the header and level 3 does not disclose, that the request came from a proxy |
 | maxRetries | When a request failes, the number of retries to be done, before returning None |
 | maxRequestsThreshold | number of requests to be send on the same proxy, before switching to another proxy |
 | requireSSL | only use proxys which support SSL |
