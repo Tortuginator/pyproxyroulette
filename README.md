@@ -9,7 +9,12 @@ pr.get("http://github.com")
 ```
 ### Initialisation parameters
 ```python
-pr = Proxyroulette(myIP = None,securitylevel = 3,maxRetries = 5,maxReqestsThreshold = 100,requireSSL = False,requireGoogleCompatibility = False):
+pr = Proxyroulette(myIP = None,
+                   securitylevel = 3,
+                   maxRetries = 5,
+                   maxReqestsThreshold = 100,
+                   requireSSL = False,
+                   requireGoogleCompatibility = False):
 ```
 | Parameter | Description |
 | --------- | ----------- |
