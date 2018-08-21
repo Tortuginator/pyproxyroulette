@@ -1,10 +1,12 @@
 # PyProxyRoulette
-This library provides a random selection of proxys with different grades of anonymity. Theese can then be used for [Requests](http://docs.python-requests.org/en/master/) to mask your identity.
+The pyproxyroulette library provides a wrapper for python [Requests](http://docs.python-requests.org/en/master/). It takes care of randomly selecting proxys and swapping them out to when needed. Additionally it ensures, that the proxy is working corrctly.
+
 ## Usage
 ```python
 from pyproxyroulette import ProxyRoulette
 req = ProxyRoulette()
 req.get("http://github.com")
 ```
+
 ## Disclaimer
 THIS SOFTWARE IS PROVIDED ''AS IS'' AND ANY EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
