@@ -14,7 +14,7 @@ pr = Proxyroulette(myIP = None,
                    maxRetries = 5,
                    maxReqestsThreshold = 100,
                    requireSSL = False,
-                   requireGoogleCompatibility = False):
+                   requireGoogleCompatibility = False)
 ```
 | Parameter | Description |
 | --------- | ----------- |
