@@ -1,5 +1,5 @@
 # PyProxyRoulette
-The pyproxyroulette library provides a wrapper for python [Requests](http://docs.python-requests.org/en/master/). It takes care of randomly selecting proxys and swapping them out to when needed. Additionally it ensures, that the proxy is working corrctly.
+The pyproxyroulette library provides a wrapper for python [Requests](http://docs.python-requests.org/en/master/). It takes care of randomly selecting proxys and swapping them out when needed. Additionally it ensures, that the proxy is working corrctly.
 
 ### Example Usage
 ```python
@@ -19,8 +19,8 @@ pr = ProxyRoulette(myIP = None,
 | Parameter | Description |
 | --------- | ----------- |
 | myIP | ProxyRoulette needs to know your real IP to compare against the proxys IP to ensure your real ip is hidden. It is usually determined automatically, but you can provide it well |
-| securityLevel | between 1 and 3, 3 beeing the best. level 1 uses a proxy, but sends your real ip in the header. Level 2 semds some random ip in the header and level 3 does not disclose, that the request came from a proxy |
-| maxRetries | When a request failes, the number of retries to be done, before returning None |
+| securityLevel | between 1 and 3, 3 beeing the best. level 1 uses a proxy, but sends your real ip in the header. Level 2 sends a random IP in the header and level 3 does not disclose that the request came from a proxy |
+| maxRetries | When a request fails, the number of retries to be done, before returning None |
 | maxRequestsThreshold | number of requests to be send on the same proxy, before switching to another proxy |
 | requireSSL | only use proxys which support SSL |
 | requireGoogleCompability | only use proxys which are not blocked or detected by google |
