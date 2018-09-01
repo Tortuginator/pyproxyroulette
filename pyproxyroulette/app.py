@@ -1,8 +1,10 @@
 import requests, warnings, re, random
 
 class ProxyRoulette(object):
-    ValidIpAddressRegex = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$";
-    def __init__(self,myIP = None,securitylevel = 3,maxRetries = 5,maxReqestsThreshold = 100):
+    __ValidIPregex = "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$";
+    __FindIPregex = r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"
+    
+    def __init__(self,myIP = None,securitylevel = 3,maxRetries = 5,maxReqestsThreshold = 100,requireSSL = True,requireGoogleCompatibility = False):
 
         self.setDefaults()
         if not 0 <= int(securitylevel) <= 3:
@@ -14,20 +16,23 @@ class ProxyRoulette(object):
         if myIP == None:
             self.originalIP = self.getIP()
         else:
-            if re.match(ValidIpAddressRegex, str(myIP)):
+            if re.match(__ValidIPregex, str(myIP)):
                 self.originalIP = myIP
             else:
                 pass
                 #TODO:raise value error
 
-        self.proxy = self.proxyGatherer()
+        #download proxy list
+        self.proxyList = self.proxyGatherer()
         self.currentProxy = None
-        #Init some variables
-        #The request counter gets incremented for reach request made through a proxy. Then it hits the maxRequests Threshold a new proxy is selected
-        self.requestCounter = maxReqestsThreshold + 1
+        self.requestCounter = maxReqestsThreshold + 1 #to ensure a proxy is selected upon first request
         self.requestRetries = 0
-        self.maxReqestsThreshold = maxReqestsThreshold
 
+        #process function parameters
+        self.maxReqestsThreshold = maxReqestsThreshold
+        self.requireGoogleCompatibility = requireGoogleCompatibility
+        self.requireSSL = requireSSL
+        
     def setDefaults(self): 
         """Sets all default values"""
 
@@ -51,7 +56,7 @@ class ProxyRoulette(object):
         #sets the verification method to determine if we really are bedind a proxy
         self.proxyVerificator = self.isValidProxy
 
-        #method downloading the proxy list
+        #method downloading, processing & returning the proxy list
         self.proxyGatherer = self.getProxyList
 
         #method to test the proxy
@@ -67,13 +72,22 @@ class ProxyRoulette(object):
         self.proxylengthVerification = True
 
         #init the proxylist
-        self.proxy = []
+        self.proxyList = []
+
+        #proxy test url
+        self.proxyTestUrl = "http://news.ycombinator.com/"
 
     def getProxyList(self):
+        """
+        Downloads a list containing proxy ip's and their ports with the security details
+        Returns a list of proxyies matching the security requirements
+
+        """
         proxylist = requests.get("https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list.txt")
         proxyProcessed = []
         for i in str(proxylist.content).split("\\n")[3:-2]:
             i_secLevel = 0
+            #parse security level
             if "-N" in i:
                 i_secLevel = 1
             elif "-A" in i:
@@ -86,13 +100,17 @@ class ProxyRoulette(object):
             i_google = True if "+" in i else False
 
             proxyProcessed.append((i_uri,i_secLevel,i_ssl,i_google))
+
+        if len(proxyProcessed) == 0:
+            warnings.warn("Proxy list is empty")
         return proxyProcessed
 
     def getIP(self,proxy = {}):
         """calls icanhazip.com to retrieve the ip. This request can be both proxied & unprovied"""
         ip_request = requests.get("http://icanhazip.com/",proxies = proxy,timeout = self.proxyVerificatorTimeout)
-        ip_candidates = re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", str(ip_request.content))
+        ip_candidates = re.findall(__FindIPregex, str(ip_request.content))
         if len(ip_candidates) == 1:
+            #sometimes the proxys add additional content to the page. This results in this string beeing very long. The content might contain the original ipaddress
             if self.proxylengthVerification:
                 if len(ip_request.content) < 100:
                     return ip_candidates[0]
@@ -100,9 +118,11 @@ class ProxyRoulette(object):
             else:
                 return ip_candidates[0]
         else:
+            warnings.warn("Unable to get proxy IP")
             return None
 
     def dictFromProxy(self):
+        assert self.currentProxy != None
         if self.requireSSL:
             return {"https":self.currentProxy,"http":self.currentProxy}
         else:
@@ -116,10 +136,13 @@ class ProxyRoulette(object):
         return self.dictFromProxy()
 
     def selectNewProxy(self):
+        if self.proxyList == None or len(self.proxyList) == 0:
+            #raise serious error
+            pass
         self.requestCounter = 0
         possibleProxy = []
-        #Structure: proxy - seclvl - ssl - google
-        for i in self.proxy:
+        #Structure: proxy:port - seclvl - ssl - google
+        for i in self.proxyList:
             if self.requireGoogleCompatibility:
                 if not i[3]:continue;
             if self.securitylevel < i[1]:
@@ -145,7 +168,7 @@ class ProxyRoulette(object):
         return self.currentProxy
 
     def isValidResponse(self,request):
-        """Decides whereas the request returned a valid response"""
+        """Decides whereas the request returned a valid response based on statuscodes"""
         if request.status_code == 407:
             self.selectNewProxy()
             return False
@@ -155,25 +178,31 @@ class ProxyRoulette(object):
 
     def testProxy(self,proxy):
         try:
-            requests.get("http://news.ycombinator.com/",proxies = proxy,timeout = self.proxyVerificatorTimeout)
+            requests.get(self.proxyTestUrl,proxies = proxy,timeout = self.proxyVerificatorTimeout)
             return True
         except Exception as e:
             raise e
+            #TODO: raise custom exception, test url not reachable
             return False
 
     def isValidProxy(self,proxy):
         """calls a webpage which returns the IP-address of the requestee. In the best case, this is the ip of the proxy"""
         ip = self.getIP(proxy = proxy)
-        print(ip,self.originalIP)
-        if ip != self.originalIP:
-            return True
+        if ip == None:return False;
+        if ip != self.originalIP:return True;
         return False
 
     def get(self, uri, **kwargs):
+        """
+        Wrapper for the requests.get function
+        """
         request_args = {
             'proxies':self.dictFromProxy()
         }
         request_args.update(kwargs)
+        if "proxies" in kwargs:
+            pass
+            #TODO: raise serious error
         self.requestCounter +=1
         try:
             response = requests.get(uri,**request_args)
@@ -183,8 +212,8 @@ class ProxyRoulette(object):
         if self.responseValidity(response):
             rr = response
         else:
-            if self.maxRetries <= self.requestRetries:
-                self.maxRetries +=1
+            if self.maxRetries >= self.requestRetries:
+                self.requestRetries +=1
                 rr = self.get(url,**request_args)
             else:
                 self.requestRetries = 0
