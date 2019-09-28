@@ -7,7 +7,8 @@ from pyproxyroulette import ProxyRoulette
 pr = ProxyRoulette()
 pr.get("http://github.com")
 ```
-
+The functions `get`, `post`,`option`,`put`,`delete` and `head` form the requests library are wrapped and callable through the wrapper.
+It is generally **only recommended to call and use idempotent methods** as requests which timeout can be registered by the server, despite not returning in time. Hence it is only recommended to use the `GET` method.
 ### Initialisation parameters
 ```python
 pr = ProxyRoulette(debug_mode=False, 
@@ -21,6 +22,7 @@ pr = ProxyRoulette(debug_mode=False,
 | max_timeout | Timeout until a request is assumed to have failed |
 
 ## Example Decorator Usage
+**WARNING: USE THE DECORATOR ONLY FOR SINGLE-THREADED APPLICATIONS**
 ```python
 import requests
 from pyproxyroulette import ProxyRoulette
@@ -32,7 +34,7 @@ def foo_bar():
     requests.post("http://github.com/login",data = {"username":"foo","password":"bar"})
 ```
 
-Using the `@pr.proxify()` decorator above the declaration of a funtion, will apply pyproxyroulette to all requests made by the requests library in that spefific funftion. 
+Using the `@pr.proxify()` decorator above the declaration of a funtion, will apply pyproxyroulette to all requests made by the requests library in that specific function. 
 
 **WARNING: Use the decorator ONLY when your application uses the requests library in only ONE thread and when the the requests library is referred to as `requests` in the function. Using a different name for the library than 'requests' will prevent the wrapper from applying the proxy to the requests.**
 ## Disclaimer
