@@ -12,14 +12,18 @@ class ProxyPool:
                  prepare_getproxy=True,
                  prepare_queue_length=5,
                  proxy_is_working=defaults.proxy_is_working,
-                 proxy_timeout=8):
+                 proxy_timeout=8,
+                 debug_mode=False):
         self.pool = []
         self.pool_blacklist = []
         self.prepare_getproxy = prepare_getproxy
-        self.proxy_get_queue = queue.Queue(prepare_queue_length)
+        self.proxy_get_queue = queue.SimpleQueue()
+        self.prepare_queue_length = prepare_queue_length
         self.proxy_is_working = proxy_is_working
         self.proxy_timeout = proxy_timeout
         self.instance = None
+        self.flag_proxies_loaded = False
+        self.debug_mode = debug_mode
         if self.prepare_getproxy:
             self.instance = threading.Thread(target=self._worker)
             self.instance.setDaemon(True)
@@ -38,8 +42,11 @@ class ProxyPool:
     def get(self):
         if not self.prepare_getproxy:
             ret_proxy = self._get_new_proxy()
+            if ret_proxy is None:
+                raise Exception
+                # TODO: Raise proper exception
         else:
-            ret_proxy = self.proxy_get_queue.get(False)
+            ret_proxy = self.proxy_get_queue.get()
         return ret_proxy
 
     def has_usable_proxy(self):
@@ -55,8 +62,12 @@ class ProxyPool:
             return False
         except requests.exceptions.ProxyError:
             return False
+        except requests.exceptions.ReadTimeout:
+            return False
 
     def _get_new_proxy(self):
+        while not self.flag_proxies_loaded:
+            time.sleep(0.5)
         if not self.has_usable_proxy():
             # Raise exception as no usable proxy is in the system
             return None
@@ -84,12 +95,14 @@ class ProxyPool:
             elif self.pool[rand_index].should_be_blacklisted():
                 self.pool_blacklist.append(self.pool[rand_index])
                 del self.pool[rand_index]
-                scanned_indices = [] # Reset, as all indices are invalid now
+                scanned_indices = []  # Reset, as all indices are invalid now
 
     def _worker(self):
         while True:
-            if not self.proxy_get_queue.full():
+            if self.proxy_get_queue.qsize() < self.prepare_queue_length:
                 proxy_obj = self._get_new_proxy()
                 self.proxy_get_queue.put(proxy_obj)
+                if self.debug_mode:
+                    print("Proxy queue: {} proxies checked".format(self.proxy_get_queue.qsize()))
             else:
                 time.sleep(1)
