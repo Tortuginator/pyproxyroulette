@@ -11,16 +11,16 @@ class ProxyPool:
     def __init__(self,
                  prepare_getproxy=True,
                  prepare_queue_length=5,
-                 proxy_is_working=defaults.proxy_is_working,
-                 proxy_timeout=8,
+                 func_proxy_validator=defaults.proxy_is_working,
+                 max_timeout=8,
                  debug_mode=False):
         self.pool = []
         self.pool_blacklist = []
         self.prepare_getproxy = prepare_getproxy
         self.proxy_get_queue = queue.SimpleQueue()
         self.prepare_queue_length = prepare_queue_length
-        self.proxy_is_working = proxy_is_working
-        self.proxy_timeout = proxy_timeout
+        self.proxy_is_valid = func_proxy_validator
+        self._max_timeout = max_timeout
         self.instance = None
         self.flag_proxies_loaded = False
         self.debug_mode = debug_mode
@@ -57,7 +57,7 @@ class ProxyPool:
 
     def proxy_liveliness_check(self, proxy):
         try:
-            return self.proxy_is_working(proxy, self.proxy_timeout)
+            return self.proxy_is_valid(proxy, self._max_timeout)
         except requests.exceptions.ConnectTimeout:
             return False
         except requests.exceptions.ProxyError:
@@ -106,3 +106,19 @@ class ProxyPool:
                     print("Proxy queue: {} proxies checked".format(self.proxy_get_queue.qsize()))
             else:
                 time.sleep(1)
+
+    @property
+    def function_proxy_validator(self):
+        return self.proxy_is_valid
+
+    @function_proxy_validator.setter
+    def function_proxy_validator(self, value):
+        self.proxy_is_valid = value
+
+    @property
+    def max_timeout(self):
+        return self._max_timeout
+
+    @max_timeout.setter
+    def max_timeout(self, value):
+        self._max_timeout = value

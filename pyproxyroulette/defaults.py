@@ -24,3 +24,7 @@ class defaults:
             i_uri, i_port = i.split(" ")[0].split(":")
             proxy_processed.append((i_uri, i_port))
         return proxy_processed
+
+    @staticmethod
+    def proxy_response_validator(response):
+        pass

@@ -6,10 +6,16 @@ from .defaults import defaults
 
 
 class ProxyRouletteCore:
-    def __init__(self, proxy_pool_update_fnc=defaults.get_proxies_from_web, debug_mode=False):
-        self.proxy_pool = ProxyPool(debug_mode=debug_mode)
+    def __init__(self,
+                 func_proxy_pool_updater=defaults.get_proxies_from_web,
+                 func_proxy_validator=defaults.proxy_is_working,
+                 debug_mode=False,
+                 max_timeout=15):
+        self.proxy_pool = ProxyPool(debug_mode=debug_mode,
+                                    func_proxy_validator=func_proxy_validator,
+                                    max_timeout=max_timeout)
         self._current_proxy = None
-        self.proxy_pool_update_fnc = proxy_pool_update_fnc
+        self.proxy_pool_update_fnc = func_proxy_pool_updater
         self.update_interval = datetime.timedelta(minutes=20)
         self.update_instance = threading.Thread(target=self._proxy_pool_update_thread)
         self.update_instance.setDaemon(True)
@@ -57,3 +63,26 @@ class ProxyRouletteCore:
     def add_proxy(self, ip, port):
         self.proxy_pool.add(ip, port)
 
+    @property
+    def function_proxy_validator(self):
+        return self.proxy_pool.function_proxy_validator
+
+    @function_proxy_validator.setter
+    def function_proxy_validator(self, value):
+        self.proxy_pool.function_proxy_validator = value
+
+    @property
+    def function_proxy_pool_updater(self):
+        return self.proxy_pool_update_fnc
+
+    @function_proxy_pool_updater.setter
+    def function_proxy_pool_updater(self, value):
+        self.proxy_pool_update_fnc = value
+
+    @property
+    def max_timeout(self):
+        return self.proxy_pool.max_timeout
+
+    @max_timeout.setter
+    def max_timeout(self, value):
+        self.proxy_pool.max_timeout = value
