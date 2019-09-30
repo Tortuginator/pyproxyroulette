@@ -5,9 +5,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pyproxyroulette/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/pyproxyroulette/app.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/pyproxyroulette/core.py" beforeDir="false" afterPath="$PROJECT_DIR$/pyproxyroulette/core.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproxyroulette/defaults.py" beforeDir="false" afterPath="$PROJECT_DIR$/pyproxyroulette/defaults.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproxyroulette/exceptions.py" beforeDir="false" afterPath="$PROJECT_DIR$/pyproxyroulette/exceptions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproxyroulette/pool.py" beforeDir="false" afterPath="$PROJECT_DIR$/pyproxyroulette/pool.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -17,33 +14,23 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/pyproxyroulette/app.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="493">
-              <caret line="59" column="85" lean-forward="true" selection-start-line="59" selection-start-column="85" selection-end-line="59" selection-end-column="85" />
+            <state relative-caret-position="471">
+              <caret line="96" column="26" selection-start-line="96" selection-start-column="23" selection-end-line="96" selection-end-column="26" />
               <folding>
                 <element signature="e#0#35#0" expanded="true" />
-                <element signature="e#1255#1329#0" />
-                <element signature="e#1373#1445#0" />
-                <element signature="e#1492#1570#0" />
-                <element signature="e#1615#1689#0" />
-                <element signature="e#1737#1817#0" />
-                <element signature="e#2011#2128#0" />
-                <element signature="e#2438#2659#0" />
-                <element signature="e#2736#2958#0" />
-                <element signature="e#3012#3087#0" />
-                <element signature="e#3742#3885#0" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/pyproxyroulette/core.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-328">
-              <caret line="18" column="61" lean-forward="true" selection-start-line="18" selection-start-column="61" selection-end-line="18" selection-end-column="61" />
+            <state relative-caret-position="539">
+              <caret line="51" column="53" lean-forward="true" selection-start-line="51" selection-start-column="53" selection-end-line="51" selection-end-column="53" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -63,8 +50,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/pyproxyroulette/defaults.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="34">
-              <caret line="2" selection-start-line="2" selection-end-line="2" />
+            <state relative-caret-position="187">
+              <caret line="11" column="24" selection-start-line="11" selection-start-column="24" selection-end-line="11" selection-end-column="24" />
             </state>
           </provider>
         </entry>
@@ -81,7 +68,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/setup.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="17">
+            <state relative-caret-position="85">
               <caret line="5" selection-start-line="5" selection-end-line="5" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
@@ -133,6 +120,7 @@
     <findStrings>
       <find>full</find>
       <find>print</find>
+      <find>current_proxy</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -148,18 +136,18 @@
         <option value="$PROJECT_DIR$/pyproxyroulette/__init__.py" />
         <option value="$PROJECT_DIR$/tests.py" />
         <option value="$PROJECT_DIR$/pyproxyroulette/defaults.py" />
-        <option value="$PROJECT_DIR$/pyproxyroulette/core.py" />
         <option value="$PROJECT_DIR$/pyproxyroulette/pool.py" />
         <option value="$PROJECT_DIR$/pyproxyroulette/exceptions.py" />
         <option value="$PROJECT_DIR$/pyproxyroulette/app.py" />
+        <option value="$PROJECT_DIR$/pyproxyroulette/core.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="450" />
-    <option name="y" value="190" />
-    <option name="width" value="1460" />
-    <option name="height" value="1405" />
+    <option name="x" value="-9" />
+    <option name="y" value="-9" />
+    <option name="width" value="2578" />
+    <option name="height" value="1408" />
   </component>
   <component name="ProjectView">
     <navigator proportions="" version="1">
@@ -188,6 +176,7 @@
   <component name="PropertiesComponent">
     <property name="ASKED_SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../AachenImmo" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
   <component name="RecentsManager">
@@ -222,7 +211,6 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-7" y="-7" width="2062" height="1126" extended-state="6" />
-    <editor active="true" />
     <layout>
       <window_info id="Favorites" order="0" side_tool="true" />
       <window_info active="true" content_ui="combo" id="Project" order="1" visible="true" weight="0.2497532" />
@@ -246,16 +234,6 @@
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/pyproxyroulette/constants.py" />
     <entry file="file://$PROJECT_DIR$/tests/default.py" />
-    <entry file="file://$PROJECT_DIR$/setup.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="17">
-          <caret line="5" selection-start-line="5" selection-end-line="5" />
-          <folding>
-            <element signature="e#0#9#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/pyproxyroulette/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="51">
@@ -273,24 +251,34 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pyproxyroulette/proxy.py">
+    <entry file="file://$PROJECT_DIR$/pyproxyroulette/exceptions.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="323">
-          <caret line="19" selection-start-line="19" selection-end-line="19" />
+        <state relative-caret-position="119">
+          <caret line="7" selection-start-line="7" selection-end-line="7" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/setup.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="85">
+          <caret line="5" selection-start-line="5" selection-end-line="5" />
+          <folding>
+            <element signature="e#0#9#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/pyproxyroulette/defaults.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="34">
-          <caret line="2" selection-start-line="2" selection-end-line="2" />
+        <state relative-caret-position="187">
+          <caret line="11" column="24" selection-start-line="11" selection-start-column="24" selection-end-line="11" selection-end-column="24" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pyproxyroulette/exceptions.py">
+    <entry file="file://$PROJECT_DIR$/pyproxyroulette/proxy.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="119">
-          <caret line="7" selection-start-line="7" selection-end-line="7" />
+        <state relative-caret-position="323">
+          <caret line="19" selection-start-line="19" selection-end-line="19" />
         </state>
       </provider>
     </entry>
@@ -301,32 +289,22 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pyproxyroulette/core.py">
+    <entry file="file://$PROJECT_DIR$/pyproxyroulette/app.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-328">
-          <caret line="18" column="61" lean-forward="true" selection-start-line="18" selection-start-column="61" selection-end-line="18" selection-end-column="61" />
+        <state relative-caret-position="471">
+          <caret line="96" column="26" selection-start-line="96" selection-start-column="23" selection-end-line="96" selection-end-column="26" />
           <folding>
-            <element signature="e#0#15#0" expanded="true" />
+            <element signature="e#0#35#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pyproxyroulette/app.py">
+    <entry file="file://$PROJECT_DIR$/pyproxyroulette/core.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="493">
-          <caret line="59" column="85" lean-forward="true" selection-start-line="59" selection-start-column="85" selection-end-line="59" selection-end-column="85" />
+        <state relative-caret-position="539">
+          <caret line="51" column="53" lean-forward="true" selection-start-line="51" selection-start-column="53" selection-end-line="51" selection-end-column="53" />
           <folding>
-            <element signature="e#0#35#0" expanded="true" />
-            <element signature="e#1255#1329#0" />
-            <element signature="e#1373#1445#0" />
-            <element signature="e#1492#1570#0" />
-            <element signature="e#1615#1689#0" />
-            <element signature="e#1737#1817#0" />
-            <element signature="e#2011#2128#0" />
-            <element signature="e#2438#2659#0" />
-            <element signature="e#2736#2958#0" />
-            <element signature="e#3012#3087#0" />
-            <element signature="e#3742#3885#0" />
+            <element signature="e#0#15#0" expanded="true" />
           </folding>
         </state>
       </provider>

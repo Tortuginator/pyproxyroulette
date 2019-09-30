@@ -21,36 +21,50 @@ class ProxyRouletteCore:
         self.update_instance.setDaemon(True)
         self.update_instance.start()
         self.debug_mode = debug_mode
+        self.proxy_current_thlock = threading.Lock()
 
-    @property
-    def current_proxy(self):
+    def current_proxy(self, return_obj=False):
+        self.proxy_current_thlock.acquire()
+
         if self._current_proxy is not None and self._current_proxy.is_usable():
             if self.debug_mode:
                 print("Proxy requested, decided: not changeing proxy")
-            return self._current_proxy.to_dict()
         elif self._current_proxy is not None:
             if self.debug_mode:
                 print("Proxy not usable. Updating current_proxy now")
             self._current_proxy.cooldown = datetime.timedelta(hours=1)
             self._current_proxy = self.proxy_pool.get()
-            return self._current_proxy.to_dict()
         else:
             if self.debug_mode:
                 print("No proxy set. Updating current_proxy now")
             self._current_proxy = self.proxy_pool.get()
-            return self._current_proxy.to_dict()
 
-    def force_update(self):
+        if return_obj:
+            result = self._current_proxy
+        else:
+            result = self._current_proxy.to_dict()
+
+        self.proxy_current_thlock.release()
+        return result
+
+    def force_update(self, last_proxy_obj=None):
+        if last_proxy_obj is not None:
+            if last_proxy_obj != self._current_proxy:
+                if self.debug_mode:
+                    print("Force update not executed, as current proxy has already been changed")
+                return self._current_proxy
         self._current_proxy = self.proxy_pool.get()
         return self._current_proxy
 
-    def proxy_feedback(self, request_success=False, request_failure=False, request_fatal=False):
+    def proxy_feedback(self, request_success=False, request_failure=False, request_fatal=False, proxy_obj=None):
+        if proxy_obj is None:
+            proxy_obj = self._current_proxy
         if request_success and not request_failure and not request_fatal:
-            self._current_proxy.counter_requests += 1
+            proxy_obj.counter_requests += 1
         elif request_failure and not request_success and not request_fatal:
-            self._current_proxy.counter_fails += 1
+            proxy_obj.counter_fails += 1
         elif request_fatal and not request_success and not request_failure:
-            self._current_proxy.counter_fatal += 1
+            proxy_obj.counter_fatal += 1
 
     def _proxy_pool_update_thread(self):
         while True:

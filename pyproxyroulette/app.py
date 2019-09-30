@@ -43,8 +43,9 @@ class ProxyRoulette(object):
         current_retry = 1
 
         while current_retry <= self.max_retries or self.max_retries == 0:
+            temp_proxy_obj = self.proxy_core.current_proxy(return_obj=True)
             request_args = {
-                'proxies': self.proxy_core.current_proxy,
+                'proxies': temp_proxy_obj.to_dict(),
                 'timeout': self.max_timeout
             }
             request_args.update(kwargs)
@@ -54,15 +55,15 @@ class ProxyRoulette(object):
                     print("{}: {} with arguments: {}".format(req_type, url, request_args))
                 return method(url, **request_args)
             except requests_original.exceptions.Timeout:
-                self.proxy_core.proxy_feedback(request_failure=True)
-                self.proxy_core.force_update()
+                self.proxy_core.proxy_feedback(request_failure=True, proxy_obj=temp_proxy_obj)
+                self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
                 if self.debug_mode:
-                    print("{}: Timeout: {} request failed".format(req_type,req_type))
+                    print("{}: Timeout: {} request failed".format(req_type, req_type))
             except requests_original.exceptions.ProxyError:
-                self.proxy_core.proxy_feedback(request_fatal=True)
-                self.proxy_core.force_update()
+                self.proxy_core.proxy_feedback(request_fatal=True, proxy_obj=temp_proxy_obj)
+                self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
                 if self.debug_mode:
-                    print("{}: ProxyError: {} request failed".format(req_type,req_type))
+                    print("{}: ProxyError: {} request failed".format(req_type, req_type))
             except Exception as err:
                 if not err.args:
                     err.args = ('',)
