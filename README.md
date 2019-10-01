@@ -1,7 +1,7 @@
 # PyProxyRoulette
 The pyproxyroulette library is a wrapper for the [Requests](http://docs.python-requests.org/en/master/) library. The wrapper adds a random proxy to each request and ensures that the proxy is working and swaps it out when needed. Additionally, the wrapper tries to detect if a request has been blocked by the requested web-host. Blocked requests are repeated with different proxy servers.
 
-### Example Usage
+## Example Wrapper Usage
 ```python
 from pyproxyroulette import ProxyRoulette
 pr = ProxyRoulette()
@@ -13,13 +13,19 @@ It is generally **only recommended to call and use idempotent methods** as reque
 ```python
 pr = ProxyRoulette(debug_mode=False, 
                    max_retries=2,
-                   max_timeout=15)
+                   max_timeout=15,
+                   func_proxy_validator=defaults.proxy_is_working,
+                   func_proxy_pool_update=defaults.get_proxies_from_web,
+                   func_proxy_response_validator=defaults.proxy_response_validator)
 ```
 | Parameter | Description |
 | --------- | ----------- |
 | debug_mode | activated, it prints additional internal information. Used for debugging |
 | max_retries | Number of retries whith different proxies when a request fails.|
 | max_timeout | Timeout until a request is assumed to have failed |
+| func_proxy_validator | Function, that can check if a specific (ip,port) combination is valid and working |
+| func_proxy_pool_update |  Function which returns a list of ip, port pairs. Gets called in intervalls |  
+| func_proxy_response_validator | Function which checks if a request has been blocked by analyzig the response content. A blocked request will lead to a resending of the request using a different proxy |
 
 ## Example Decorator Usage
 **WARNING: USE THE DECORATOR ONLY FOR SINGLE-THREADED APPLICATIONS**
