@@ -27,4 +27,4 @@ class defaults:
 
     @staticmethod
     def proxy_response_validator(response):
-        pass
+        return True

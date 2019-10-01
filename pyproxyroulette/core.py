@@ -22,6 +22,7 @@ class ProxyRouletteCore:
         self.update_instance.start()
         self.debug_mode = debug_mode
         self.proxy_current_thlock = threading.Lock()
+        self.cooldown = datetime.timedelta(hours=1, minutes=5)
 
     def current_proxy(self, return_obj=False):
         self.proxy_current_thlock.acquire()
@@ -47,12 +48,19 @@ class ProxyRouletteCore:
         self.proxy_current_thlock.release()
         return result
 
-    def force_update(self, last_proxy_obj=None):
+    def force_update(self, last_proxy_obj=None, apply_cooldown=False):
+        if apply_cooldown:
+            if last_proxy_obj is not None:
+                last_proxy_obj.cooldown = self.cooldown
+            else:
+                self._current_proxy.cooldown = self.cooldown
+
         if last_proxy_obj is not None:
             if last_proxy_obj != self._current_proxy:
                 if self.debug_mode:
                     print("Force update not executed, as current proxy has already been changed")
                 return self._current_proxy
+
         self._current_proxy = self.proxy_pool.get()
         return self._current_proxy
 
