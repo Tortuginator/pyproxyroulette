@@ -69,6 +69,11 @@ class ProxyRoulette(object):
                 self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
                 if self.debug_mode:
                     print("{}: ProxyError: {} request failed".format(req_type, req_type))
+            except requests_original.exceptions.ConnectionError:
+                self.proxy_core.proxy_feedback(request_fatal=True, proxy_obj=temp_proxy_obj)
+                self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
+                if self.debug_mode:
+                    print("{}: ConnectionError: {} request failed".format(req_type, req_type))
             except Exception as err:
                 if not err.args:
                     err.args = ('',)
