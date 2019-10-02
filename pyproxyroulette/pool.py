@@ -5,6 +5,7 @@ import random
 import time
 import threading
 import requests
+import datetime
 
 
 class ProxyPool:
@@ -17,7 +18,7 @@ class ProxyPool:
         self.pool = []
         self.pool_blacklist = []
         self.prepare_getproxy = prepare_getproxy
-        self.proxy_get_queue = queue.SimpleQueue()
+        self.proxy_get_queue = queue.Queue()
         self.prepare_queue_length = prepare_queue_length
         self.proxy_is_valid = func_proxy_validator
         self._max_timeout = max_timeout
@@ -47,6 +48,9 @@ class ProxyPool:
                 # TODO: Raise proper exception
         else:
             ret_proxy = self.proxy_get_queue.get()
+            self.proxy_get_queue.task_done()
+            if ret_proxy is None:
+                raise Exception
         return ret_proxy
 
     def has_usable_proxy(self):
@@ -66,41 +70,38 @@ class ProxyPool:
             return False
 
     def _get_new_proxy(self):
-        while not self.flag_proxies_loaded:
-            time.sleep(0.5)
-        if not self.has_usable_proxy():
-            # Raise exception as no usable proxy is in the system
-            return None
-        scanned_indices = []
         while True:
+
+            usable_proxies = [p for p in self.pool if p.is_usable()]
             # Generate new random index
-            rand_index = random.randint(0, len(self.pool))
-            if rand_index in scanned_indices:
+            if len(usable_proxies) == 0:
+                time.sleep(1)
+                if self.debug_mode:
+                    print("Skipping iteration. No usable proxies")
                 continue
 
-            # Check if there are working proxies left in the pool
-            if len(scanned_indices) >= len(self.pool):
-                return None
-            scanned_indices.append(rand_index)
+            rand_index = random.randint(0, len(usable_proxies)-1)
+
+            if usable_proxies[rand_index].should_be_blacklisted():
+                self.pool_blacklist.append(usable_proxies[rand_index])
+                self.pool.remove(usable_proxies[rand_index])
+                continue
 
             # When the Proxy is usable then check if it is working
-            if self.pool[rand_index].is_usable():
-                if self.proxy_liveliness_check(self.pool[rand_index]):
-                    return self.pool[rand_index]
-                else:
-                    self.pool[rand_index].counter_fails += 1
-                    continue
-
-            # If the proxy is unusable. It is moved to the blacklist
-            elif self.pool[rand_index].should_be_blacklisted():
-                self.pool_blacklist.append(self.pool[rand_index])
-                del self.pool[rand_index]
-                scanned_indices = []  # Reset, as all indices are invalid now
+            if self.proxy_liveliness_check(usable_proxies[rand_index]):
+                return usable_proxies[rand_index]
+            else:
+                usable_proxies[rand_index].counter_fails += 1
+                usable_proxies[rand_index].cooldown = datetime.timedelta(minutes=20)
+                continue
 
     def _worker(self):
         while True:
             if self.proxy_get_queue.qsize() < self.prepare_queue_length:
                 proxy_obj = self._get_new_proxy()
+                if proxy_obj is None:
+                    time.sleep(1)
+                    continue
                 self.proxy_get_queue.put(proxy_obj)
                 if self.debug_mode:
                     print("Proxy queue: {} proxies checked".format(self.proxy_get_queue.qsize()))

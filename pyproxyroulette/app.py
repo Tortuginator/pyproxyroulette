@@ -5,7 +5,8 @@ from .defaults import defaults
 
 
 class ProxyRoulette(object):
-    def __init__(self, debug_mode=False,
+    def __init__(self,
+                 debug_mode=False,
                  max_retries=2,
                  max_timeout=15,
                  func_proxy_validator=defaults.proxy_is_working,
