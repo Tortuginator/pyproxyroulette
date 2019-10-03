@@ -8,8 +8,10 @@ class defaults:
             res = requests_original.get("http://icanhazip.com/", proxies=proxy.to_dict(), timeout=timeout)
             proxy.response_time = res.elapsed.total_seconds()
         except requests_original.exceptions.ConnectTimeout:
+            proxy.response_time = timeout
             return False
         except requests_original.exceptions.ProxyError:
+            proxy.response_time = timeout
             return False
         return True
 

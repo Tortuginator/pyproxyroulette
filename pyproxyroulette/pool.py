@@ -46,17 +46,24 @@ class ProxyPool:
             raise Exception("The thread to obtain proxies was not started. It can be started using .start()")
 
         while True:
-            usable_proxies = [p for p in self.pool if p.is_usable() and p.response_time != 0]
+            usable_proxies = [p for p in self.pool if p.is_usable()]
             if len(usable_proxies) == 0:
                 if self.debug_mode:
                     print("[PPR] Currently no Usable proxy to get in the system. Waiting")
                     time.sleep(1)
             else:
                 break
-
         # Obtain a proxy ranking
         ranked_proxies = sorted(usable_proxies, key=lambda i: i.response_time)
-        ret_proxy = ranked_proxies[0]
+        # Try to ingore the response_time == 0 entries if possible
+        usability_threshold = 0
+        for i in range(0, len(ranked_proxies)):
+            if ranked_proxies[i].response_time == 0:
+                usability_threshold = i
+        if len(ranked_proxies) > usability_threshold + 1:
+            usability_threshold = usability_threshold + 1
+
+        ret_proxy = ranked_proxies[usability_threshold]
         if ret_proxy is None:
             raise Exception("[PPR] Returned proxy is None")
         return ret_proxy
@@ -71,10 +78,13 @@ class ProxyPool:
         try:
             return self.proxy_is_valid(proxy, self._max_timeout)
         except requests.exceptions.ConnectTimeout:
+            proxy.response_time = self._max_timeout
             return False
         except requests.exceptions.ProxyError:
+            proxy.response_time = self._max_timeout
             return False
         except requests.exceptions.ReadTimeout:
+            proxy.response_time = self._max_timeout
             return False
 
     def _worker(self):
@@ -89,7 +99,7 @@ class ProxyPool:
             # First, check if any proxies have never been checked
             unused_proxies = [p for p in self.pool if p.response_time == 0]
             if self.debug_mode:
-                print("[PPR] Proxy queue: {} proxies checked".format(len(unused_proxies)))
+                print("[PPR] Proxies unchecked queue: {} ".format(len(unused_proxies)))
 
             if len(unused_proxies) != 0:
                 # If proxy does not work according to validator
@@ -97,6 +107,7 @@ class ProxyPool:
                     assert(unused_proxies[0].response_time != 0)
                     unused_proxies[0].counter_fails += 1
                     unused_proxies[0].cooldown = self.liveliness_fail_cooldown_penalty
+                    print("[PPR] Checked proxy not working {}".format(unused_proxies[0]))
                 continue
 
             # Second, see if any proxies have not been checked for a long time
