@@ -29,15 +29,15 @@ class ProxyRouletteCore:
 
         if self._current_proxy is not None and self._current_proxy.is_usable():
             if self.debug_mode:
-                print("Proxy requested, decided: not changeing proxy")
+                print("[PPR] Proxy requested, decided: not changeing proxy")
         elif self._current_proxy is not None:
             if self.debug_mode:
-                print("Proxy not usable. Updating current_proxy now")
+                print("[PPR] Proxy not usable. Updating current_proxy now")
             self._current_proxy.cooldown = datetime.timedelta(hours=1)
             self._current_proxy = self.proxy_pool.get()
         else:
             if self.debug_mode:
-                print("No proxy set. Updating current_proxy now")
+                print("[PPR] No proxy set. Updating current_proxy now")
             self._current_proxy = self.proxy_pool.get()
 
         if return_obj:
@@ -58,7 +58,7 @@ class ProxyRouletteCore:
         if last_proxy_obj is not None:
             if last_proxy_obj != self._current_proxy:
                 if self.debug_mode:
-                    print("Force update not executed, as current proxy has already been changed")
+                    print("[PPR] Force update not executed, as current proxy has already been changed")
                 return self._current_proxy
 
         self._current_proxy = self.proxy_pool.get()
@@ -70,6 +70,7 @@ class ProxyRouletteCore:
         if request_success and not request_failure and not request_fatal:
             proxy_obj.counter_requests += 1
         elif request_failure and not request_success and not request_fatal:
+            proxy_obj.cooldown = datetime.timedelta(minutes=30)
             proxy_obj.counter_fails += 1
         elif request_fatal and not request_success and not request_failure:
             proxy_obj.counter_fatal += 1
@@ -79,7 +80,6 @@ class ProxyRouletteCore:
             proxy_list = self.proxy_pool_update_fnc()
             for p in proxy_list:
                 self.add_proxy(p[0], p[1])
-            self.proxy_pool.flag_proxies_loaded = True
             time.sleep(self.update_interval.total_seconds())
 
     def add_proxy(self, ip, port):

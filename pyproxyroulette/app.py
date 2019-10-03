@@ -53,27 +53,32 @@ class ProxyRoulette(object):
 
             try:
                 if self.debug_mode:
-                    print("{}: {} with arguments: {}".format(req_type, url, request_args))
+                    print("[PPR] {}: {} with arguments: {}".format(req_type, url, request_args))
                 res = method(url, **request_args)
+                temp_proxy_obj.response_time = res.elapsed.total_seconds()
+
                 if not self.__default_proxy_response_validator(res): #If not valid response:
-                    print("Validator noticed a invalid response")
+                    print("[PPR] Validator noticed a invalid response")
                     self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj, apply_cooldown=True)
                 return res
             except requests_original.exceptions.Timeout:
+                temp_proxy_obj.response_time = self.max_timeout
                 self.proxy_core.proxy_feedback(request_failure=True, proxy_obj=temp_proxy_obj)
                 self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
                 if self.debug_mode:
-                    print("{}: Timeout: {} request failed".format(req_type, req_type))
+                    print("[PPR] {}: Timeout: {} request failed".format(req_type, req_type))
             except requests_original.exceptions.ProxyError:
+                temp_proxy_obj.response_time = self.max_timeout
                 self.proxy_core.proxy_feedback(request_fatal=True, proxy_obj=temp_proxy_obj)
                 self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
                 if self.debug_mode:
-                    print("{}: ProxyError: {} request failed".format(req_type, req_type))
+                    print("[PPR] {}: ProxyError: {} request failed".format(req_type, req_type))
             except requests_original.exceptions.ConnectionError:
+                temp_proxy_obj.response_time = self.max_timeout
                 self.proxy_core.proxy_feedback(request_fatal=True, proxy_obj=temp_proxy_obj)
                 self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
                 if self.debug_mode:
-                    print("{}: ConnectionError: {} request failed".format(req_type, req_type))
+                    print("[PPR] {}: ConnectionError: {} request failed".format(req_type, req_type))
             except Exception as err:
                 if not err.args:
                     err.args = ('',)
@@ -98,7 +103,7 @@ class ProxyRoulette(object):
                 g['requests'] = self
 
                 if self.debug_mode:
-                    print("Proxify decorator called by {}".format(func))
+                    print("[PPR] Proxify decorator called by {}".format(func))
                 try:
                     res = func(*args, **kwargs)
                 finally:

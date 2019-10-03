@@ -9,6 +9,14 @@ class ProxyObject:
         self.counter_fails = 0
         self._cooldown = None
         self.counter_fatal = 0
+        self.last_checked = None
+
+        # Criteria: usability config
+        self.max_fatal_count = 1
+        self.max_fail_count = 3
+
+        self.__response_time_total = 0
+        self.__response_counter = 0
 
     def is_in_cooldown(self):
         if self._cooldown is None:
@@ -43,7 +51,26 @@ class ProxyObject:
                 "https": str(self.ip) + ":" + str(self.port)}
 
     def is_usable(self):
-        return self.counter_fails < 3 and not self.is_in_cooldown() and self.counter_fatal < 1
+        return self.counter_fails < self.max_fail_count and \
+               not self.is_in_cooldown() and \
+               self.counter_fatal < self.max_fatal_count
 
     def should_be_blacklisted(self):
-        return self.counter_fails >= 3 or self.counter_fatal >= 1
+        return self.counter_fails >= self.max_fail_count or \
+               self.counter_fatal >= self.max_fatal_count
+
+    @property
+    def response_time(self):
+        if self.__response_counter == 0:
+            return 0
+        return float(self.__response_time_total)/self.__response_counter
+
+    @response_time.setter
+    def response_time(self, value):
+        self.last_checked = datetime.datetime.now()
+        self.__response_time_total += value
+        self.__response_counter += 1
+
+    def reset_response_time(self):
+        self.__response_counter = 0
+        self.__response_time_total = 0
