@@ -60,7 +60,8 @@ class ProxyRoulette(object):
                 if not self.__default_proxy_response_validator(res): #If not valid response:
                     print("[PPR] Validator noticed a invalid response")
                     self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj, apply_cooldown=True)
-                return res
+                else:
+                    return res
             except requests_original.exceptions.Timeout:
                 temp_proxy_obj.response_time = self.max_timeout
                 self.proxy_core.proxy_feedback(request_failure=True, proxy_obj=temp_proxy_obj)

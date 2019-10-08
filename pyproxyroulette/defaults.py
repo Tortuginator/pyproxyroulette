@@ -25,7 +25,7 @@ class defaults:
         proxy_processed = []
         for i in str(proxy_list.content).split("\\n")[10:-2]:
             i_uri, i_port = i.split(" ")[0].split(":")
-            proxy_processed.append((i_uri, i_port))
+            proxy_processed.append((i_uri, i_port, 0))
         return proxy_processed
 
     @staticmethod

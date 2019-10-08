@@ -79,11 +79,11 @@ class ProxyRouletteCore:
         while True:
             proxy_list = self.proxy_pool_update_fnc()
             for p in proxy_list:
-                self.add_proxy(p[0], p[1])
+                self.add_proxy(p[0], p[1], init_responsetime=p[2])
             time.sleep(self.update_interval.total_seconds())
 
-    def add_proxy(self, ip, port):
-        self.proxy_pool.add(ip, port)
+    def add_proxy(self, ip, port,init_responsetime=0):
+        self.proxy_pool.add(ip, port, init_responsetime=init_responsetime)
 
     @property
     def function_proxy_validator(self):

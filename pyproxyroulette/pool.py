@@ -20,9 +20,6 @@ class ProxyPool:
         self.instance = None
         self.debug_mode = debug_mode
 
-        # When the liveliness check fails this cooldown is applied to the proxy
-        self.liveliness_fail_cooldown_penalty = datetime.timedelta(minutes=20)
-
         # Start Proxy getter instance
         self.start()
 
@@ -31,8 +28,10 @@ class ProxyPool:
         self.instance.setDaemon(True)
         self.instance.start()
 
-    def add(self, ip, port):
+    def add(self, ip, port, init_responsetime=0):
         inst = ProxyObject(ip, port)
+        if init_responsetime != 0:
+            inst.response_time = int(init_responsetime)
         if inst in self.pool_blacklist:
             return
         if inst not in self.pool:
@@ -86,6 +85,9 @@ class ProxyPool:
         except requests.exceptions.ReadTimeout:
             proxy.response_time = self._max_timeout
             return False
+        except requests.exceptions.ChunkedEncodingError:
+            proxy.response_time = self._max_timeout
+            return False
 
     def _worker(self):
         while True:
@@ -98,15 +100,19 @@ class ProxyPool:
 
             # First, check if any proxies have never been checked
             unused_proxies = [p for p in self.pool if p.response_time == 0]
+            usable_proxies = [p for p in self.pool if p.is_usable()]
             if self.debug_mode:
-                print("[PPR] Proxies unchecked queue: {} ".format(len(unused_proxies)))
+                print("[PPR] Pool size: {}| Blacklist size: {}|"
+                      " Usable size: {}| Unusable size: {}".format(len(self.pool),
+                                                                   len(self.pool_blacklist),
+                                                                   len(usable_proxies),
+                                                                   len(unused_proxies)))
 
             if len(unused_proxies) != 0:
                 # If proxy does not work according to validator
                 if not self.proxy_liveliness_check(unused_proxies[0]):
                     assert(unused_proxies[0].response_time != 0)
                     unused_proxies[0].counter_fails += 1
-                    unused_proxies[0].cooldown = self.liveliness_fail_cooldown_penalty
                     print("[PPR] Checked proxy not working {}".format(unused_proxies[0]))
                 continue
 
@@ -118,7 +124,6 @@ class ProxyPool:
                 if not self.proxy_liveliness_check(unchecked_proxies[0]):
                     assert (unchecked_proxies[0].response_time != 0)
                     unchecked_proxies[0].counter_fails += 1
-                    unchecked_proxies[0].cooldown = self.liveliness_fail_cooldown_penalty
                 continue
             # Third, check blacklisted proxies
             # TODO
