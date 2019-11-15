@@ -3,8 +3,9 @@ import datetime
 
 class ProxyObject:
     def __init__(self, _ip, _port):
-        self.ip = _ip
-        self.port = _port
+        self.ip = str(_ip).strip(" ")
+        self.port = int(_port)
+
         self.counter_requests = 0
         self.counter_fails = 0
         self._cooldown = None
@@ -17,6 +18,10 @@ class ProxyObject:
 
         self.__response_time_total = 0
         self.__response_counter = 0
+
+        # Checks
+        assert (0 <= self.port <= 65535)
+        # TODO: check if valid IP
 
     def is_in_cooldown(self):
         if self._cooldown is None:

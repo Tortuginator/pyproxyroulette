@@ -88,6 +88,13 @@ class ProxyPool:
         except requests.exceptions.ChunkedEncodingError:
             proxy.response_time = self._max_timeout
             return False
+        except requests.exceptions.ConnectionError:
+            proxy.response_time = self._max_timeout
+            return False
+        except Exception as e:
+            print("[WARNING] an error occured while lifeliness check.")
+            print("[WARNING] {}".format(str(e)))
+            return False
 
     def _worker(self):
         while True:
@@ -113,7 +120,8 @@ class ProxyPool:
                 if not self.proxy_liveliness_check(unused_proxies[0]):
                     assert(unused_proxies[0].response_time != 0)
                     unused_proxies[0].counter_fails += 1
-                    print("[PPR] Checked proxy not working {}".format(unused_proxies[0]))
+                    if self.debug_mode:
+                        print("[PPR] Checked proxy not working {}".format(unused_proxies[0]))
                 continue
 
             # Second, see if any proxies have not been checked for a long time
