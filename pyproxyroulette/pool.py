@@ -91,6 +91,9 @@ class ProxyPool:
         except requests.exceptions.ConnectionError:
             proxy.response_time = self._max_timeout
             return False
+        except requests.exceptions.TooManyRedirects:
+            proxy.response_time = self._max_timeout
+            return False
         except Exception as e:
             print("[WARNING] an error occured while lifeliness check.")
             print("[WARNING] {}".format(str(e)))

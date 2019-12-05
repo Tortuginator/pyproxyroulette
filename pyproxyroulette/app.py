@@ -82,6 +82,12 @@ class ProxyRoulette(object):
                 self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
                 if self.debug_mode:
                     print("[PPR] {}: ConnectionError: {} request failed".format(req_type, req_type))
+            except requests_original.exceptions.ChunkedEncodingError:
+                temp_proxy_obj.response_time = self.max_timeout
+                self.proxy_core.proxy_feedback(request_fatal=True, proxy_obj=temp_proxy_obj)
+                self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
+                if self.debug_mode:
+                    print("[PPR] {}: ChunkedEncodingError: {} request failed".format(req_type, req_type))
             except Exception as err:
                 if not err.args:
                     err.args = ('',)
