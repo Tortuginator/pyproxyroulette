@@ -1,5 +1,11 @@
-from pyproxyroulette import ProxyRoulette
+from pyproxyroulette import ProxyRoulette, defaults
 import requests
+
+
+@ProxyRoulette.proxy_pool_updater
+def cool_proxy_updater():
+    return defaults.get_proxies_from_web()
+
 
 print("Initializing PyProxyRoulette")
 pr = ProxyRoulette(debug_mode=True, max_retries=0)
@@ -21,6 +27,6 @@ def foo_bar_deco():
     print(len(req.content))
 
 
-# test Wit and without decorator
+# test with and without decorator
 foo_bar()
 foo_bar_deco()

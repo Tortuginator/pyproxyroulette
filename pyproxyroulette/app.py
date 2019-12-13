@@ -4,14 +4,31 @@ import requests as requests_original
 from .defaults import defaults
 
 
+PROXY_POOL_UPDATERS = dict()
+
+
 class ProxyRoulette(object):
     def __init__(self,
                  debug_mode=False,
-                 max_retries=2,
+                 max_retries=5,
                  max_timeout=15,
                  func_proxy_validator=defaults.proxy_is_working,
-                 func_proxy_pool_update=defaults.get_proxies_from_web,
                  func_proxy_response_validator=defaults.proxy_response_validator):
+
+        if len(PROXY_POOL_UPDATERS) == 0:
+            print("[PPR] Using internal default as pool updater")
+            func_proxy_pool_update = defaults.get_proxies_from_web
+        else:
+            print("[PPR] Using decorator as pool updater origin")
+
+            def local_updater():
+                proxies = []
+                for fname, f in PROXY_POOL_UPDATERS.items():
+                    if debug_mode:
+                        print(f"[PPR] calling pool updater: {fname}")
+                    proxies += f()
+                return proxies
+            func_proxy_pool_update = local_updater
         self.proxy_core = ProxyRouletteCore(debug_mode=debug_mode,
                                             max_timeout=max_timeout,
                                             func_proxy_validator=func_proxy_validator,
@@ -61,33 +78,18 @@ class ProxyRoulette(object):
                 if not self.__default_proxy_response_validator(res): #If not valid response:
                     if self.debug_mode:
                         print("[PPR] Validator noticed a invalid response")
-                    self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj, apply_cooldown=True)
+                    self.proxy_core.force_update(apply_cooldown=True)
                 else:
                     return res
-            except requests_original.exceptions.Timeout:
-                temp_proxy_obj.response_time = self.max_timeout
-                self.proxy_core.proxy_feedback(request_failure=True, proxy_obj=temp_proxy_obj)
-                self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
+            except (requests_original.exceptions.Timeout,
+                    requests_original.exceptions.ProxyError,
+                    requests_original.exceptions.ConnectionError,
+                    requests_original.exceptions.ChunkedEncodingError):
+                self.proxy_core.proxy_feedback(request_failure=True)
+                self.proxy_core.force_update()
                 if self.debug_mode:
                     print("[PPR] {}: Timeout: {} request failed".format(req_type, req_type))
-            except requests_original.exceptions.ProxyError:
-                temp_proxy_obj.response_time = self.max_timeout
-                self.proxy_core.proxy_feedback(request_fatal=True, proxy_obj=temp_proxy_obj)
-                self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
-                if self.debug_mode:
-                    print("[PPR] {}: ProxyError: {} request failed".format(req_type, req_type))
-            except requests_original.exceptions.ConnectionError:
-                temp_proxy_obj.response_time = self.max_timeout
-                self.proxy_core.proxy_feedback(request_fatal=True, proxy_obj=temp_proxy_obj)
-                self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
-                if self.debug_mode:
-                    print("[PPR] {}: ConnectionError: {} request failed".format(req_type, req_type))
-            except requests_original.exceptions.ChunkedEncodingError:
-                temp_proxy_obj.response_time = self.max_timeout
-                self.proxy_core.proxy_feedback(request_fatal=True, proxy_obj=temp_proxy_obj)
-                self.proxy_core.force_update(last_proxy_obj=temp_proxy_obj)
-                if self.debug_mode:
-                    print("[PPR] {}: ChunkedEncodingError: {} request failed".format(req_type, req_type))
+
             except Exception as err:
                 if not err.args:
                     err.args = ('',)
@@ -100,7 +102,7 @@ class ProxyRoulette(object):
         def wrapper_decorator(func):
             def func_wrapper(*args, **kwargs):
                 if "requests" not in func.__globals__.keys():
-                    raise DecoratorNotApplicable("'Requests' not imported or not imported as 'Requests'")
+                    raise DecoratorNotApplicable("'Requests' not imported or not imported as 'requests'")
                 if "threading" in func.__globals__.keys() and not self.acknowledge_decorator_restrictions:
                     raise DecoratorNotApplicable("The decorator can not be used in a non-single-threaded environment. "
                                                  "This exception can be disabled by setting ProxyRoulette.acknowledge_"
@@ -123,6 +125,11 @@ class ProxyRoulette(object):
                 return res
             return func_wrapper
         return wrapper_decorator
+
+    @staticmethod
+    def proxy_pool_updater(func):
+        PROXY_POOL_UPDATERS[func.__name__] = func
+        return func
 
     @property
     def function_proxy_validator(self):

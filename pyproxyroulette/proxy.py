@@ -1,27 +1,53 @@
 import datetime
+from enum import Enum
+
+
+class ProxyState(Enum):
+    UNKNOWN = 0
+    ACTIVE = 1
+    COOLDOWN = 2
+    DEAD = 3
 
 
 class ProxyObject:
-    def __init__(self, _ip, _port):
+    def __init__(self, _ip, _port, average_response_time=None, max_timeout=8):
         self.ip = str(_ip).strip(" ")
         self.port = int(_port)
-
-        self.counter_requests = 0
-        self.counter_fails = 0
-        self._cooldown = None
-        self.counter_fatal = 0
+        self._max_timeout = max_timeout
         self.last_checked = None
+        # Counter for statistics
+        self.counter_consequtive_check_fails = 0  # Consequtive failures to respond to proxy checks.
+        self.counter_consequtive_request_fails = 0  # Consequtive failures to respond to requests.
+
+        # Cooldown variables
+        self._cooldown = None
 
         # Criteria: usability config
-        self.max_fatal_count = 1
-        self.max_fail_count = 3
+        self.max_c_check_fails = 2
+        self.max_c_request_fails = 3
 
         self.__response_time_total = 0
         self.__response_counter = 0
 
+        if average_response_time is not None:
+            self.__response_counter = 1
+            self.__response_time_total = float(average_response_time)
+
         # Checks
         assert (0 <= self.port <= 65535)
         # TODO: check if valid IP
+
+    @property
+    def state(self):
+        if self.max_c_request_fails <= self.counter_consequtive_request_fails:
+            return ProxyState.DEAD
+        if self.max_c_check_fails <= self.counter_consequtive_check_fails:
+            return ProxyState.DEAD
+        if self.is_in_cooldown():
+            return ProxyState.COOLDOWN
+        if self.__response_counter == 0:
+            return ProxyState.UNKNOWN
+        return ProxyState.ACTIVE
 
     def is_in_cooldown(self):
         if self._cooldown is None:
@@ -51,18 +77,29 @@ class ProxyObject:
     def __hash__(self):
         return hash(self.ip) ^ hash(self.port)
 
+    def __repr__(self):
+        return f"Proxy[{self.ip}:{self.port}|{self.response_time}|{self.state}]"
+
     def to_dict(self):
         return {"http": str(self.ip) + ":" + str(self.port),
                 "https": str(self.ip) + ":" + str(self.port)}
 
-    def is_usable(self):
-        return self.counter_fails < self.max_fail_count and \
-               not self.is_in_cooldown() and \
-               self.counter_fatal < self.max_fatal_count
+    def report_request_failed(self):
+        self.response_time = self._max_timeout
+        self.counter_consequtive_request_fails +=1
 
-    def should_be_blacklisted(self):
-        return self.counter_fails >= self.max_fail_count or \
-               self.counter_fatal >= self.max_fatal_count
+    def report_check_failed(self):
+        self.response_time = self._max_timeout
+        self.counter_consequtive_check_fails +=1
+        self.cooldown = datetime.timedelta(hours=1)
+
+    def report_success(self):
+        self.counter_consequtive_request_fails = 0
+        self.counter_consequtive_check_fails = 0
+
+    def set_as_dead(self):
+        self.counter_consequtive_request_fails = self.max_c_request_fails
+        self.counter_consequtive_check_fails = self.max_c_check_fails
 
     @property
     def response_time(self):
@@ -72,7 +109,6 @@ class ProxyObject:
 
     @response_time.setter
     def response_time(self, value):
-        self.last_checked = datetime.datetime.now()
         self.__response_time_total += value
         self.__response_counter += 1
 

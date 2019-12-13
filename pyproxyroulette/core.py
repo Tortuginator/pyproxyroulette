@@ -1,7 +1,7 @@
 import datetime
 import time
 import threading
-from .pool import ProxyPool
+from .pool import ProxyPool, ProxyState
 from .defaults import defaults
 
 
@@ -14,66 +14,61 @@ class ProxyRouletteCore:
         self.proxy_pool = ProxyPool(debug_mode=debug_mode,
                                     func_proxy_validator=func_proxy_validator,
                                     max_timeout=max_timeout)
-        self._current_proxy = None
+        self._current_proxy = {}
         self.proxy_pool_update_fnc = func_proxy_pool_updater
         self.update_interval = datetime.timedelta(minutes=20)
         self.update_instance = threading.Thread(target=self._proxy_pool_update_thread)
         self.update_instance.setDaemon(True)
         self.update_instance.start()
         self.debug_mode = debug_mode
-        self.proxy_current_thlock = threading.Lock()
         self.cooldown = datetime.timedelta(hours=1, minutes=5)
 
     def current_proxy(self, return_obj=False):
-        self.proxy_current_thlock.acquire()
+        current_thread = threading.currentThread().ident
+        if current_thread not in self._current_proxy.keys():
+            self._current_proxy[current_thread] = None
 
-        if self._current_proxy is not None and self._current_proxy.is_usable():
+        if self._current_proxy[current_thread] is not None and \
+                self._current_proxy[current_thread].state == ProxyState.ACTIVE:
             if self.debug_mode:
                 print("[PPR] Proxy requested, decided: not changeing proxy")
-        elif self._current_proxy is not None:
+        elif self._current_proxy[current_thread] is not None:
             if self.debug_mode:
-                print("[PPR] Proxy not usable. Updating current_proxy now")
-            self._current_proxy.cooldown = datetime.timedelta(hours=1)
-            self._current_proxy = self.proxy_pool.get()
+                print(f"[PPR] Proxy not usable. Updating current_proxy for {current_thread} now")
+            self._current_proxy[current_thread].cooldown = self.cooldown
+            self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
         else:
             if self.debug_mode:
-                print("[PPR] No proxy set. Updating current_proxy now")
-            self._current_proxy = self.proxy_pool.get()
+                print(f"[PPR] No proxy set. Updating current_proxy for {current_thread} now")
+            self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
 
         if return_obj:
-            result = self._current_proxy
+            result = self._current_proxy[current_thread]
         else:
-            result = self._current_proxy.to_dict()
-
-        self.proxy_current_thlock.release()
+            result = self._current_proxy[current_thread].to_dict()
         return result
 
-    def force_update(self, last_proxy_obj=None, apply_cooldown=False):
+    def force_update(self, apply_cooldown=False):
+        current_thread = threading.currentThread().ident
         if apply_cooldown:
-            if last_proxy_obj is not None:
-                last_proxy_obj.cooldown = self.cooldown
-            else:
-                self._current_proxy.cooldown = self.cooldown
+            if self._current_proxy[current_thread] is not None:
+                self._current_proxy[current_thread].cooldown = self.cooldown
 
-        if last_proxy_obj is not None:
-            if last_proxy_obj != self._current_proxy:
-                if self.debug_mode:
-                    print("[PPR] Force update not executed, as current proxy has already been changed")
-                return self._current_proxy
-
-        self._current_proxy = self.proxy_pool.get()
+        self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
         return self._current_proxy
 
-    def proxy_feedback(self, request_success=False, request_failure=False, request_fatal=False, proxy_obj=None):
-        if proxy_obj is None:
-            proxy_obj = self._current_proxy
-        if request_success and not request_failure and not request_fatal:
-            proxy_obj.counter_requests += 1
-        elif request_failure and not request_success and not request_fatal:
+    def proxy_feedback(self, request_success=False, request_failure=False):
+        current_thread = threading.currentThread().ident
+        if self._current_proxy[current_thread] is not None:
+            proxy_obj = self._current_proxy[current_thread]
+        else:
+            return None
+
+        if request_success and not request_failure:
+            proxy_obj.report_success()
+        elif request_failure and not request_success:
             proxy_obj.cooldown = datetime.timedelta(minutes=30)
-            proxy_obj.counter_fails += 1
-        elif request_fatal and not request_success and not request_failure:
-            proxy_obj.counter_fatal += 1
+            proxy_obj.report_request_failed()
 
     def _proxy_pool_update_thread(self):
         while True:
@@ -82,7 +77,7 @@ class ProxyRouletteCore:
                 self.add_proxy(p[0], p[1], init_responsetime=p[2])
             time.sleep(self.update_interval.total_seconds())
 
-    def add_proxy(self, ip, port,init_responsetime=0):
+    def add_proxy(self, ip, port, init_responsetime=0):
         self.proxy_pool.add(ip, port, init_responsetime=init_responsetime)
 
     @property
