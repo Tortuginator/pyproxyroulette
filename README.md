@@ -1,6 +1,11 @@
 # PyProxyRoulette
 The pyproxyroulette library is a wrapper for the [Requests](http://docs.python-requests.org/en/master/) library. The wrapper applies a random proxy to each request and ensures that the proxy is working and swaps it out when needed. Additionally, the wrapper tries to detect if a request has been blocked by the requested web-host. Blocked requests are repeated with different proxy servers.
 
+## Installation
+As pyproxyroulette is not yet listed on the pypi repository you can install it as following using pip:
+```bash
+pip install git+https://github.com/Tortuginator/pyproxyroulette.git
+```
 ## Example Wrapper Usage
 ```python
 from pyproxyroulette import ProxyRoulette
