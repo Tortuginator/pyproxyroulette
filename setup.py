@@ -10,7 +10,7 @@ with io.open('pyproxyroulette/__init__.py', 'rt', encoding='utf8') as f:
     version = re.search(r'__version__ = \'(.*?)\'', f.read()).group(1)
 
 setup(
-    name='pyproxyroulette-TORTUGINATOR',
+    name='pyproxyroulette',
     version=version,
     project_urls=OrderedDict((
         ('Documentation', 'https://github.com/Tortuginator/pyproxyroulette'),
@@ -22,7 +22,6 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Tortuginator/pyproxyroulette",
-    download_url = 'https://github.com/Tortuginator/pyproxyroulette/archive/v0.4.2.tar.gz',
     include_package_data=True,
     zip_safe=False,
     platforms='any',
