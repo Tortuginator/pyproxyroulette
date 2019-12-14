@@ -1,4 +1,4 @@
-__version__ = '0.3.dev0'
+__version__ = '0.4.2'
 
 from .app import ProxyRoulette
 from .defaults import defaults
