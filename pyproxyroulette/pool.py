@@ -125,7 +125,7 @@ class ProxyPool:
                 chosen_proxy = random.choice(unchecked_proxies)
                 check_result = self.proxy_liveliness_check(chosen_proxy)
                 if self.debug_mode and not check_result:
-                    print(f"[PPR] Checked proxy not working {chosen_proxy}")
+                    print(f"[PPR] Proxy not working {chosen_proxy}")
                 continue
 
             # Second, see if any proxies have not been checked for a long time

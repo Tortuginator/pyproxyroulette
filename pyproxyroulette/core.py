@@ -31,15 +31,15 @@ class ProxyRouletteCore:
         if self._current_proxy[current_thread] is not None and \
                 self._current_proxy[current_thread].state == ProxyState.ACTIVE:
             if self.debug_mode:
-                print("[PPR] Proxy requested, decided: not changeing proxy")
+                print("[PPR] Proxy requested but it will not be changed")
         elif self._current_proxy[current_thread] is not None:
             if self.debug_mode:
-                print(f"[PPR] Proxy not usable. Updating current_proxy for {current_thread} now")
+                print(f"[PPR] Current proxy not in state ACTIVE. Updating current_proxy for {current_thread} now")
             self._current_proxy[current_thread].cooldown = self.cooldown
             self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
         else:
             if self.debug_mode:
-                print(f"[PPR] No proxy set. Updating current_proxy for {current_thread} now")
+                print(f"[PPR] No current proxy found. Setting current_proxy for {current_thread} now")
             self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
 
         if return_obj:

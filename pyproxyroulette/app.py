@@ -2,7 +2,7 @@ from .core import ProxyRouletteCore
 from .exceptions import MaxRetriesExceeded,DecoratorNotApplicable
 import requests as requests_original
 from .defaults import defaults
-
+import threading
 
 PROXY_POOL_UPDATERS = dict()
 
@@ -72,7 +72,7 @@ class ProxyRoulette(object):
 
             try:
                 if self.debug_mode:
-                    print("[PPR] {}: {} with arguments: {}".format(req_type, url, request_args))
+                    print("[PPR] {} {} with arguments: {}".format(req_type, url, request_args))
                 res = method(url, **request_args)
                 temp_proxy_obj.response_time = res.elapsed.total_seconds()
 
@@ -85,11 +85,13 @@ class ProxyRoulette(object):
             except (requests_original.exceptions.Timeout,
                     requests_original.exceptions.ProxyError,
                     requests_original.exceptions.ConnectionError,
-                    requests_original.exceptions.ChunkedEncodingError):
+                    requests_original.exceptions.ChunkedEncodingError) as e:
+                if type(e).__name__ == "ProxyError":
+                    temp_proxy_obj.set_as_dead()
                 self.proxy_core.proxy_feedback(request_failure=True)
                 self.proxy_core.force_update()
                 if self.debug_mode:
-                    print("[PPR] {}: Timeout: {} request failed".format(req_type, req_type))
+                    print(f"[PPR] {req_type} request failed with reason: {type(e).__name__}")
 
             except Exception as err:
                 if not err.args:
@@ -104,7 +106,10 @@ class ProxyRoulette(object):
             def func_wrapper(*args, **kwargs):
                 if "requests" not in func.__globals__.keys():
                     raise DecoratorNotApplicable("'Requests' not imported or not imported as 'requests'")
-                if "threading" in func.__globals__.keys() and not self.acknowledge_decorator_restrictions:
+                tmp_reqth = self.proxy_core._current_proxy.keys()
+                tmp_cident = threading.currentThread().ident
+                if ((len(tmp_reqth) == 1 and tmp_cident not in tmp_reqth) or len(tmp_reqth) > 1) and \
+                        not self.acknowledge_decorator_restrictions:
                     raise DecoratorNotApplicable("The decorator can not be used in a non-single-threaded environment. "
                                                  "This exception can be disabled by setting ProxyRoulette.acknowledge_"
                                                  "decorator_restrictions = True")
