@@ -12,7 +12,7 @@ from pyproxyroulette import ProxyRoulette
 pr = ProxyRoulette()
 pr.get("http://github.com")
 ```
-The functions `get`, `post`, `option`, `put`, `delete` and `head` form the requests library are wrapped and callable through the wrapper.
+The functions `get`, `post`, `option`, `put`, `delete` and `head` from the requests library are wrapped and callable through the wrapper.
 It is generally **only recommended to call and use idempotent methods** as requests which timeout can be registered by the server, despite not beeing registerd in time at the client. Hence it is only recommended to use the `GET` method in production environments.
 
 ### Initialisation parameters
@@ -31,7 +31,7 @@ pr = ProxyRoulette(debug_mode=False,
 | func_proxy_validator |defaults.proxy_is_working() | Function, that can check if a specific (ip,port) combination is valid and working |
 | func_proxy_response_validator | defaults.proxy_response_validator() | Function, which checks if a request has been blocked by inspecting the response. A blocked request will lead to repetition of the request using a different proxy |
 
-## Extend the Plol of Proxies
+## Extend the Pool of Proxies
 It is possible to add functions to the system, which are called on a regular basis and return pairs of IP,PORT to be used in the proxy roulette.
 A proxy pool update function has to return a list of IP,PORT tuples. A default function is used to populate the proxy pool if no
 explicit function is defined. Multiple functions can be added using the following decorator:
