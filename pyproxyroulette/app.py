@@ -19,7 +19,8 @@ class ProxyRoulette(object):
             print("[PPR] Using internal default as pool updater")
             func_proxy_pool_update = defaults.get_proxies_from_web
         else:
-            print("[PPR] Using decorator as pool updater origin")
+            if self.debug_mode:
+                print("[PPR] Using decorator as pool updater origin")
 
             def local_updater():
                 proxies = []

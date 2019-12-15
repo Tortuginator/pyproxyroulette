@@ -105,8 +105,6 @@ class ProxyPool:
               f"Cooldown: {len(cooldown_proxies)} | "
               f"Unknown: {len(unchecked_proxies)}")
 
-
-
     def _worker(self):
         while True:
             if self.debug_mode:
@@ -133,7 +131,7 @@ class ProxyPool:
             # Second, see if any proxies have not been checked for a long time
             delta_threshold = datetime.datetime.now() - datetime.timedelta(hours=5)
             unchecked_proxies = [p for p in self.pool if p.last_checked is None]
-            recheck_proxies = [p for p in self.pool if p.last_checked < delta_threshold]
+            recheck_proxies = [p for p in self.pool if p.last_checked is not None and p.last_checked < delta_threshold]
 
             # check in batches
             for p in unchecked_proxies[:4]:
