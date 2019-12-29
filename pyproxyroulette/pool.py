@@ -99,11 +99,7 @@ class ProxyPool:
                 active_proxies.append(p)
             elif state == ProxyState.COOLDOWN:
                 cooldown_proxies.append(p)
-        print(f"[PPR] Total: {len(self.pool)} | "
-              f"Dead: {len(self.pool_dead)} | "
-              f"Active: {len(active_proxies)} | "
-              f"Cooldown: {len(cooldown_proxies)} | "
-              f"Unknown: {len(unchecked_proxies)}")
+        print("[PPR] Total: " + str(len(self.pool)) + " | " + "Dead: " + str(len(self.pool_dead)) + " | " + "Active: " + str(len(active_proxies)) + " | " + "Cooldown: " + str(len(cooldown_proxies)) + " | " + "Unknown: " + str(len(unchecked_proxies)))
 
     def _worker(self):
         while True:
@@ -115,7 +111,7 @@ class ProxyPool:
                 self.pool.remove(b)
                 self.pool_dead.append(b)
                 if self.debug_mode:
-                    print(f"[PPR] Proxy classified as Dead {b}")
+                    print("[PPR] Proxy classified as Dead {b}".format(b=b))
 
             # First, check if any proxies have never been checked
             unchecked_proxies = [p for p in self.pool if p.state == ProxyState.UNKNOWN]
@@ -125,7 +121,7 @@ class ProxyPool:
                 chosen_proxy = random.choice(unchecked_proxies)
                 check_result = self.proxy_liveliness_check(chosen_proxy)
                 if self.debug_mode and not check_result:
-                    print(f"[PPR] Proxy not working {chosen_proxy}")
+                    print("[PPR] Proxy not working {chosen_proxy}".format(**locals()))
                 continue
 
             # Second, see if any proxies have not been checked for a long time

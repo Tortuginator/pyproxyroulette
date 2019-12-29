@@ -78,7 +78,7 @@ class ProxyObject:
         return hash(self.ip) ^ hash(self.port)
 
     def __repr__(self):
-        return f"Proxy[{self.ip}:{self.port}|{self.response_time}|{self.state}]"
+        return "Proxy[{ip}:{port}|{response_time}|{state}]".format(ip=self.ip,port=self.port,response_time=self.response_time,state=self.state)
 
     def to_dict(self):
         return {"http": str(self.ip) + ":" + str(self.port),

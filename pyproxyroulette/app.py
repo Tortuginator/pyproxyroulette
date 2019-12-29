@@ -26,7 +26,7 @@ class ProxyRoulette(object):
                 proxies = []
                 for fname, f in PROXY_POOL_UPDATERS.items():
                     if debug_mode:
-                        print(f"[PPR] calling pool updater: {fname}")
+                        print("[PPR] calling pool updater: {fname}".format(**locals()))
                     proxies += f()
                 return proxies
             func_proxy_pool_update = local_updater
@@ -91,7 +91,7 @@ class ProxyRoulette(object):
                 self.proxy_core.proxy_feedback(request_failure=True)
                 self.proxy_core.force_update()
                 if self.debug_mode:
-                    print(f"[PPR] {req_type} request failed with reason: {type(e).__name__}")
+                    print("[PPR] {req_type} request failed with reason: {t}".format(req_type=req_type,t=type(e).__name__))
 
             except Exception as err:
                 if not err.args:

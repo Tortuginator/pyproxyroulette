@@ -28,7 +28,7 @@ setup(
     python_requires='>=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*',
     packages=['pyproxyroulette'],
     install_requires=[
-        'Requests>=2.18'
+        'Requests'
     ],
     keywords = ['PROXY', 'REQUESTS', 'PYPROXY', 'ROULETTE','CRAWLER', 'SCRAPER', 'PROXIFY'],
     classifiers=[
