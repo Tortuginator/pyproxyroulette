@@ -16,16 +16,33 @@ class ProxyPool:
         self.pool_dead = []
         self.proxy_is_valid = func_proxy_validator
         self._max_timeout = max_timeout
-        self.instance = None
+        self.instances = []
         self.debug_mode = debug_mode
+        self.worker_instances = 2
+        self.keyboard_interrupt = False
+
+        # Period to keep dead proxies in dead list
+        self.death_keep_period = datetime.timedelta(days=1)
 
         # Start Proxy getter instance
         self.start()
 
     def start(self):
-        self.instance = threading.Thread(target=self._worker)
-        self.instance.setDaemon(True)
-        self.instance.start()
+        for i in range(self.worker_instances):
+            if i < len(self.instances) and not self.instances[i].isAlive():
+                self.instances[i] = (threading.Thread(target=self._worker))
+                self.instances[i].setDaemon(True)
+                self.instances[i].start()
+            elif i >= len(self.instances):
+                self.instances.append(threading.Thread(target=self._worker))
+                self.instances[i].setDaemon(True)
+                self.instances[i].start()
+
+    def stop(self):
+        self.keyboard_interrupt = True
+        print("[PPR] Termination signal set")
+        for i in self.instances:
+            i.join()
 
     def add(self, ip, port, init_responsetime=0):
         inst = ProxyObject(ip, port, max_timeout=self._max_timeout)
@@ -40,8 +57,8 @@ class ProxyPool:
         raise NotImplementedError
 
     def get_best_proxy(self):
-        if self.instance is None:
-            raise Exception("[PPR] The thread to obtain proxies was not started. It can be started using .start()")
+        if not all([i.isAlive() for i in self.instances]) and len(self.instances) >= self.worker_instances:
+            self.start()
 
         active_proxies = [p for p in self.pool if p.state == ProxyState.ACTIVE or p.state == ProxyState.UNKNOWN]
 
@@ -102,7 +119,7 @@ class ProxyPool:
         print("[PPR] Total: " + str(len(self.pool)) + " | " + "Dead: " + str(len(self.pool_dead)) + " | " + "Active: " + str(len(active_proxies)) + " | " + "Cooldown: " + str(len(cooldown_proxies)) + " | " + "Unknown: " + str(len(unchecked_proxies)))
 
     def _worker(self):
-        while True:
+        while True and not self.keyboard_interrupt:
             if self.debug_mode:
                 self.state()
 
@@ -129,6 +146,11 @@ class ProxyPool:
             unchecked_proxies = [p for p in self.pool if p.last_checked is None]
             recheck_proxies = [p for p in self.pool if p.last_checked is not None and p.last_checked < delta_threshold]
 
+            if len(unchecked_proxies) > 0:
+                unchecked_proxies = random.shuffle(unchecked_proxies,random.random)
+            else:
+                time.sleep(3)
+
             # check in batches
             for p in unchecked_proxies[:4]:
                  self.proxy_liveliness_check(p)
@@ -136,8 +158,16 @@ class ProxyPool:
             if len(recheck_proxies) != 0:
                 self.proxy_liveliness_check(recheck_proxies[0])
 
-            # Sleep when nothing to do
-            time.sleep(3)
+            # Remove proxies which are longer dead than the death period
+            i = 0
+            while i < len(self.pool_dead):
+                if self.pool_dead[i].death_date is None:
+                    self.pool_dead[i].death_date = datetime.datetime.now()
+
+                if self.pool_dead[i].death_date + self.death_keep_period < datetime.datetime.now():
+                    del self.pool_dead[i]
+                else:
+                    i += 1
 
     @property
     def function_proxy_validator(self):

@@ -15,12 +15,16 @@ class ProxyObject:
         self.port = int(_port)
         self._max_timeout = max_timeout
         self.last_checked = None
+
         # Counter for statistics
         self.counter_consequtive_check_fails = 0  # Consequtive failures to respond to proxy checks.
         self.counter_consequtive_request_fails = 0  # Consequtive failures to respond to requests.
 
         # Cooldown variables
         self._cooldown = None
+
+        # Death Date
+        self.death_date = None
 
         # Criteria: usability config
         self.max_c_check_fails = 2
@@ -42,6 +46,8 @@ class ProxyObject:
         if self.max_c_request_fails <= self.counter_consequtive_request_fails:
             return ProxyState.DEAD
         if self.max_c_check_fails <= self.counter_consequtive_check_fails:
+            if self.death_date is None:
+                self.death_date = datetime.datetime.now()
             return ProxyState.DEAD
         if self.is_in_cooldown():
             return ProxyState.COOLDOWN
@@ -100,6 +106,8 @@ class ProxyObject:
     def set_as_dead(self):
         self.counter_consequtive_request_fails = self.max_c_request_fails
         self.counter_consequtive_check_fails = self.max_c_check_fails
+        if self.death_date is None:
+            self.death_date = datetime.datetime.now()
 
     @property
     def response_time(self):

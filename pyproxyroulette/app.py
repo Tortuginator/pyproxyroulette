@@ -61,45 +61,48 @@ class ProxyRoulette(object):
 
     def _wrapper_kernel(self, method, req_type, url, **kwargs):
         current_retry = 1
+        try:
+            while current_retry <= self.max_retries+1 or self.max_retries == 0:
+                temp_proxy_obj = self.proxy_core.current_proxy(return_obj=True)
+                request_args = {
+                    'proxies': temp_proxy_obj.to_dict(),
+                    'timeout': self.max_timeout
+                }
+                request_args.update(kwargs)
 
-        while current_retry <= self.max_retries+1 or self.max_retries == 0:
-            temp_proxy_obj = self.proxy_core.current_proxy(return_obj=True)
-            request_args = {
-                'proxies': temp_proxy_obj.to_dict(),
-                'timeout': self.max_timeout
-            }
-            request_args.update(kwargs)
-
-            try:
-                if self.debug_mode:
-                    print("[PPR] {} {} with arguments: {}".format(req_type, url, request_args))
-                res = method(url, **request_args)
-                temp_proxy_obj.response_time = res.elapsed.total_seconds()
-
-                if not self.__default_proxy_response_validator(res): #If not valid response:
+                try:
                     if self.debug_mode:
-                        print("[PPR] Validator noticed a invalid response")
-                    self.proxy_core.force_update(apply_cooldown=True)
-                else:
-                    return res
-            except (requests_original.exceptions.Timeout,
-                    requests_original.exceptions.ProxyError,
-                    requests_original.exceptions.ConnectionError,
-                    requests_original.exceptions.ChunkedEncodingError) as e:
-                if type(e).__name__ == "ProxyError":
-                    temp_proxy_obj.set_as_dead()
-                self.proxy_core.proxy_feedback(request_failure=True)
-                self.proxy_core.force_update()
-                if self.debug_mode:
-                    print("[PPR] {req_type} request failed with reason: {t}".format(req_type=req_type,t=type(e).__name__))
+                        print("[PPR] {} {} with arguments: {}".format(req_type, url, request_args))
+                    res = method(url, **request_args)
+                    temp_proxy_obj.response_time = res.elapsed.total_seconds()
 
-            except Exception as err:
-                if not err.args:
-                    err.args = ('',)
-                raise
-            current_retry += 1
-        raise MaxRetriesExceeded('The maximum number of {}'
-                                 ' retries per request has been exceeded'.format(self.max_retries))
+                    if not self.__default_proxy_response_validator(res): #If not valid response:
+                        if self.debug_mode:
+                            print("[PPR] Validator noticed a invalid response")
+                        self.proxy_core.force_update(apply_cooldown=True)
+                    else:
+                        return res
+                except (requests_original.exceptions.Timeout,
+                        requests_original.exceptions.ProxyError,
+                        requests_original.exceptions.ConnectionError,
+                        requests_original.exceptions.ChunkedEncodingError) as e:
+                    if type(e).__name__ == "ProxyError":
+                        temp_proxy_obj.set_as_dead()
+                    self.proxy_core.proxy_feedback(request_failure=True)
+                    self.proxy_core.force_update()
+                    if self.debug_mode:
+                        print("[PPR] {req_type} request failed with reason: {t}".format(req_type=req_type,t=type(e).__name__))
+
+                except Exception as err:
+                    if not err.args:
+                        err.args = ('',)
+                    raise
+                current_retry += 1
+            raise MaxRetriesExceeded('The maximum number of {}'
+                                     ' retries per request has been exceeded'.format(self.max_retries))
+        except KeyboardInterrupt:
+            print("[PPR] Registered Keyboard Interrupt. Terminating all threads")
+            self.proxy_core.proxy_pool.stop()
 
     def proxify(self):
         def wrapper_decorator(func):
