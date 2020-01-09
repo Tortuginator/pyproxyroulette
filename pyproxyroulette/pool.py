@@ -20,7 +20,7 @@ class ProxyPool:
         self.debug_mode = debug_mode
         self.worker_instances = 2
         self.keyboard_interrupt = False
-
+        self.anonymity_check = True
         # Period to keep dead proxies in dead list
         self.death_keep_period = datetime.timedelta(days=1)
 
@@ -87,7 +87,15 @@ class ProxyPool:
             proxy.last_checked = datetime.datetime.now()
             check_result = self.proxy_is_valid(proxy, self._max_timeout)
             if check_result:
-                proxy.report_success()
+                if self.anonymity_check:
+                    if defaults.is_anonymous_proxy(proxy, self._max_timeout):
+                        proxy.report_success()
+                    else:
+                        if self.debug_mode:
+                            print("[PPR] Leaking/Unresponsive proxy {} detected. Removing proxy.".format(proxy))
+                        proxy.set_as_dead()
+                else:
+                    proxy.report_success()
             else:
                 proxy.report_check_failed()
             return check_result
@@ -116,10 +124,14 @@ class ProxyPool:
                 active_proxies.append(p)
             elif state == ProxyState.COOLDOWN:
                 cooldown_proxies.append(p)
-        print("[PPR] Total: " + str(len(self.pool)) + " | " + "Dead: " + str(len(self.pool_dead)) + " | " + "Active: " + str(len(active_proxies)) + " | " + "Cooldown: " + str(len(cooldown_proxies)) + " | " + "Unknown: " + str(len(unchecked_proxies)))
+        print("[PPR] Total: " + str(len(self.pool)+len(self.pool_dead)) + " | " + "Dead: " + str(len(self.pool_dead)) + " | " + "Active: " + str(len(active_proxies)) + " | " + "Cooldown: " + str(len(cooldown_proxies)) + " | " + "Unknown: " + str(len(unchecked_proxies)))
 
     def _worker(self):
+        last_round = datetime.datetime.now() - datetime.timedelta(minutes=1)
         while True and not self.keyboard_interrupt:
+            while last_round + datetime.timedelta(minutes=1) > datetime.datetime.now():
+                time.sleep(5)
+            last_round = datetime.datetime.now()
             if self.debug_mode:
                 self.state()
 
@@ -129,6 +141,19 @@ class ProxyPool:
                 self.pool_dead.append(b)
                 if self.debug_mode:
                     print("[PPR] Proxy classified as Dead {b}".format(b=b))
+
+            # Remove proxies which are longer dead than the death period
+            i = 0
+            while i < len(self.pool_dead):
+                if self.pool_dead[i].death_date is None:
+                    self.pool_dead[i].death_date = datetime.datetime.now()
+
+                if self.pool_dead[i].death_date + self.death_keep_period < datetime.datetime.now():
+                    if self.debug_mode:
+                        print("[PPR] deleted {}".format(self.pool_dead[i]))
+                    del self.pool_dead[i]
+                else:
+                    i += 1
 
             # First, check if any proxies have never been checked
             unchecked_proxies = [p for p in self.pool if p.state == ProxyState.UNKNOWN]
@@ -152,22 +177,13 @@ class ProxyPool:
                 time.sleep(3)
 
             # check in batches
-            for p in unchecked_proxies[:4]:
-                 self.proxy_liveliness_check(p)
+            if unchecked_proxies is not None:
+                for p in unchecked_proxies[:4]:
+                     self.proxy_liveliness_check(p)
 
             if len(recheck_proxies) != 0:
                 self.proxy_liveliness_check(recheck_proxies[0])
 
-            # Remove proxies which are longer dead than the death period
-            i = 0
-            while i < len(self.pool_dead):
-                if self.pool_dead[i].death_date is None:
-                    self.pool_dead[i].death_date = datetime.datetime.now()
-
-                if self.pool_dead[i].death_date + self.death_keep_period < datetime.datetime.now():
-                    del self.pool_dead[i]
-                else:
-                    i += 1
 
     @property
     def function_proxy_validator(self):

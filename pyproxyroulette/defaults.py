@@ -31,3 +31,15 @@ class defaults:
     @staticmethod
     def proxy_response_validator(response):
         return True
+
+    @staticmethod
+    def is_anonymous_proxy(proxy, timeout=5):
+        # WARNING - this is a external proxy leak service
+        try:
+            res = requests_original.get("http://proxydb.net/anon", proxies=proxy.to_dict(), timeout=timeout)
+        except Exception:
+            return False
+        if "text-danger" in str(res.content):
+            return False
+        else:
+            return True

@@ -45,7 +45,7 @@ class ProxyObject:
     def state(self):
         if self.max_c_request_fails <= self.counter_consequtive_request_fails:
             return ProxyState.DEAD
-        if self.max_c_check_fails <= self.counter_consequtive_check_fails:
+        if self.max_c_check_fails <= self.counter_consequtive_check_fails or self.death_date is not None:
             if self.death_date is None:
                 self.death_date = datetime.datetime.now()
             return ProxyState.DEAD
@@ -102,6 +102,7 @@ class ProxyObject:
     def report_success(self):
         self.counter_consequtive_request_fails = 0
         self.counter_consequtive_check_fails = 0
+        self.death_date = None
 
     def set_as_dead(self):
         self.counter_consequtive_request_fails = self.max_c_request_fails
