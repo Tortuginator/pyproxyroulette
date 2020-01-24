@@ -85,6 +85,7 @@ class ProxyRoulette(object):
                 except (requests_original.exceptions.Timeout,
                         requests_original.exceptions.ProxyError,
                         requests_original.exceptions.ConnectionError,
+                        requests_original.exceptions.ConnectionResetError,
                         requests_original.exceptions.ChunkedEncodingError) as e:
                     if type(e).__name__ == "ProxyError":
                         temp_proxy_obj.set_as_dead()
