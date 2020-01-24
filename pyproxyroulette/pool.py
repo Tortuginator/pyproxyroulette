@@ -104,6 +104,7 @@ class ProxyPool:
                 requests.exceptions.ReadTimeout,
                 requests.exceptions.ChunkedEncodingError,
                 requests.exceptions.ConnectionError,
+                requests.exceptions.ConnectionResetError,
                 requests.exceptions.TooManyRedirects):
             proxy.report_check_failed()
             return False
