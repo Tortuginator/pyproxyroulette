@@ -1,7 +1,7 @@
 import datetime
 import time
 import threading
-from .pool import ProxyPool, ProxyState
+from .pool import ProxyPool, ProxyState,ProxyObject
 from .defaults import defaults
 import logging
 
@@ -23,20 +23,26 @@ class ProxyRouletteCore:
         self.update_instance.start()
         self.cooldown = datetime.timedelta(hours=1, minutes=5)
 
-    def current_proxy(self, return_obj=False):
+    def current_proxy(self, return_obj: bool = False):
+        """
+        Returns the proxy of the current thread. THe proxy is changed if the proxy state changes
+        The proxy state may change if feedback from this or another thread is submitted which changes the state.
+        :param return_obj: bool if the returned proxy is already a dict or a proxy object
+        :return:  proxy object or proxy dict
+        """
         current_thread = threading.currentThread().ident
         if current_thread not in self._current_proxy.keys():
             self._current_proxy[current_thread] = None
 
         if self._current_proxy[current_thread] is not None and \
                 self._current_proxy[current_thread].state == ProxyState.ACTIVE:
-            logger.debug("Proxy requested but it will not be changed")
+            logger.debug(f"Unchanged proxy returned for thread {current_thread}")
         elif self._current_proxy[current_thread] is not None:
-            logger.debug(f"Current proxy not in state ACTIVE. Updating current_proxy for {current_thread} now")
+            logger.debug(f"Assigned proxy of thread {current_thread} not in state ACTIVE. Assigning new proxy")
             self._current_proxy[current_thread].cooldown = self.cooldown
             self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
         else:
-            logging.error(f"No current proxy found. Setting current_proxy for {current_thread} now")
+            logging.error(f"No proxy set for thread {current_thread}. Assigning new proxy")
             self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
 
         if return_obj:
@@ -45,7 +51,12 @@ class ProxyRouletteCore:
             result = self._current_proxy[current_thread].to_dict()
         return result
 
-    def force_update(self, apply_cooldown=False):
+    def force_update(self, apply_cooldown: bool=False) -> ProxyObject:
+        """
+        Force the system to assign a new proxy to the thread. The old proxy may get a cooldown
+        :param apply_cooldown: Apply a cooldown the the old proxy which prevents it from beeing used for the set cooldown period
+        :return: the new proxy object
+        """
         current_thread = threading.currentThread().ident
         if apply_cooldown:
             if self._current_proxy[current_thread] is not None:
@@ -54,7 +65,13 @@ class ProxyRouletteCore:
         self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
         return self._current_proxy
 
-    def proxy_feedback(self, request_success=False, request_failure=False):
+    def proxy_feedback(self, request_success: bool = False, request_failure: bool = False):
+        """
+        Provide feedback on the proxies performance after a request
+        :param request_success: request using the proxy was successfull
+        :param request_failure: request using the proxy failed
+        :return:
+        """
         current_thread = threading.currentThread().ident
         if self._current_proxy[current_thread] is not None:
             proxy_obj = self._current_proxy[current_thread]

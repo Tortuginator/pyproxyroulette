@@ -84,7 +84,7 @@ class ProxyRoulette(object):
                         ConnectionResetError,
                         requests_original.exceptions.ChunkedEncodingError) as e:
                     if type(e).__name__ == "ProxyError":
-                        temp_proxy_obj.set_as_dead()
+                        temp_proxy_obj.report_request_failed()
                     self.proxy_core.proxy_feedback(request_failure=True)
                     self.proxy_core.force_update()
                     logger.warning("{req_type} request failed with reason: {t}".format(req_type=req_type,

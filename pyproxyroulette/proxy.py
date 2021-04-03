@@ -7,6 +7,7 @@ class ProxyState(Enum):
     ACTIVE = 1
     COOLDOWN = 2
     DEAD = 3
+    REMOVAL = 4
 
 
 class ProxyObject:
@@ -17,7 +18,6 @@ class ProxyObject:
         self.last_checked = None
 
         # Counter for statistics
-        self.counter_consequtive_check_fails = 0  # Consequtive failures to respond to proxy checks.
         self.counter_consequtive_request_fails = 0  # Consequtive failures to respond to requests.
 
         # Cooldown variables
@@ -27,12 +27,12 @@ class ProxyObject:
         self.death_date = None
 
         # Criteria: usability config
-        self.max_c_check_fails = 2
-        self.max_c_request_fails = 3
+        self.max_c_request_fails = 2
 
         self.__response_time_total = 0
         self.__response_counter = 0
 
+        self.to_be_removed = False
         if average_response_time is not None:
             self.__response_counter = 1
             self.__response_time_total = float(average_response_time)
@@ -43,9 +43,9 @@ class ProxyObject:
 
     @property
     def state(self):
+        if self.to_be_removed:
+            return ProxyState.REMOVAL
         if self.max_c_request_fails <= self.counter_consequtive_request_fails:
-            return ProxyState.DEAD
-        if self.max_c_check_fails <= self.counter_consequtive_check_fails or self.death_date is not None:
             if self.death_date is None:
                 self.death_date = datetime.datetime.now()
             return ProxyState.DEAD
@@ -93,22 +93,14 @@ class ProxyObject:
     def report_request_failed(self):
         self.response_time = self._max_timeout
         self.counter_consequtive_request_fails += 1
-
-    def report_check_failed(self):
-        self.response_time = self._max_timeout
-        self.counter_consequtive_check_fails += 1
         self.cooldown = datetime.timedelta(hours=1)
 
     def report_success(self):
         self.counter_consequtive_request_fails = 0
-        self.counter_consequtive_check_fails = 0
         self.death_date = None
 
-    def set_as_dead(self):
-        self.counter_consequtive_request_fails = self.max_c_request_fails
-        self.counter_consequtive_check_fails = self.max_c_check_fails
-        if self.death_date is None:
-            self.death_date = datetime.datetime.now()
+    def mark_for_removal(self):
+        self.to_be_removed = True
 
     @property
     def response_time(self):
