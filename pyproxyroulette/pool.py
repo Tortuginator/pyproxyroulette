@@ -5,22 +5,25 @@ import threading
 import requests
 import datetime
 import random
+import logging
+
+logger = logging.getLogger(__name__)
+mutex = threading.Lock()
 
 
 class ProxyPool:
     def __init__(self,
                  func_proxy_validator=defaults.proxy_is_working,
-                 max_timeout=8,
-                 debug_mode=False):
+                 max_timeout=8):
         self.pool = []
         self.pool_dead = []
         self.proxy_is_valid = func_proxy_validator
         self._max_timeout = max_timeout
         self.instances = []
-        self.debug_mode = debug_mode
         self.worker_instances = 2
         self.keyboard_interrupt = False
         self.anonymity_check = True
+
         # Period to keep dead proxies in dead list
         self.death_keep_period = datetime.timedelta(days=1)
 
@@ -30,7 +33,7 @@ class ProxyPool:
     def start(self):
         for i in range(self.worker_instances):
             if i < len(self.instances) and not self.instances[i].isAlive():
-                self.instances[i] = (threading.Thread(target=self._worker))
+                self.instances[i] = threading.Thread(target=self._worker)
                 self.instances[i].setDaemon(True)
                 self.instances[i].start()
             elif i >= len(self.instances):
@@ -40,7 +43,7 @@ class ProxyPool:
 
     def stop(self):
         self.keyboard_interrupt = True
-        print("[PPR] Termination signal set")
+        logger.warning("Termination signal set")
         for i in self.instances:
             i.join()
 
@@ -63,17 +66,16 @@ class ProxyPool:
         active_proxies = [p for p in self.pool if p.state == ProxyState.ACTIVE or p.state == ProxyState.UNKNOWN]
 
         while len(active_proxies) == 0:
-            if self.debug_mode:
-                print("[PPR] Currently no Usable proxy to get in the system. Waiting")
-            time.sleep(2)
+            logger.debug("Currently no Usable proxy to get in the system. Waiting")
             active_proxies = [p for p in self.pool if p.state == ProxyState.ACTIVE or p.state == ProxyState.UNKNOWN]
+            time.sleep(2)
 
         # Obtain a proxy ranking
         ranked_proxies = sorted(active_proxies, key=lambda i: i.response_time)
 
         ret_proxy = ranked_proxies[0]
         if ret_proxy is None:
-            raise Exception("[PPR] Returned 'best proxy' is None")
+            raise Exception("Returned 'best proxy' is None")
         return ret_proxy
 
     def has_usable_proxy(self):
@@ -91,14 +93,14 @@ class ProxyPool:
                     if defaults.is_anonymous_proxy(proxy, self._max_timeout):
                         proxy.report_success()
                     else:
-                        if self.debug_mode:
-                            print("[PPR] Leaking/Unresponsive proxy {} detected. Removing proxy.".format(proxy))
+                        logger.debug(f"Leaking/Unresponsive proxy {proxy} detected. Removing proxy.")
                         proxy.set_as_dead()
                 else:
                     proxy.report_success()
             else:
                 proxy.report_check_failed()
             return check_result
+
         except (requests.exceptions.ConnectTimeout,
                 requests.exceptions.ProxyError,
                 requests.exceptions.ReadTimeout,
@@ -108,53 +110,58 @@ class ProxyPool:
                 requests.exceptions.TooManyRedirects):
             proxy.report_check_failed()
             return False
+
         except Exception as e:
-            print("[WARNING] an error occured while lifeliness check.")
-            print("[WARNING] {}".format(str(e)))
+            logger.error("An error occured while lifeliness check.")
+            logger.error(f"{e}")
             return False
 
     def state(self):
-        unchecked_proxies = []
-        active_proxies = []
-        cooldown_proxies = []
+        unchecked_proxies = 0
+        active_proxies = 0
+        cooldown_proxies = 0
         for p in self.pool:
             state = p.state
             if state == ProxyState.UNKNOWN:
-                unchecked_proxies.append(p)
+                unchecked_proxies += 1
             elif state == ProxyState.ACTIVE:
-                active_proxies.append(p)
+                active_proxies += 1
             elif state == ProxyState.COOLDOWN:
-                cooldown_proxies.append(p)
-        print("[PPR] Total: " + str(len(self.pool)+len(self.pool_dead)) + " | " + "Dead: " + str(len(self.pool_dead)) + " | " + "Active: " + str(len(active_proxies)) + " | " + "Cooldown: " + str(len(cooldown_proxies)) + " | " + "Unknown: " + str(len(unchecked_proxies)))
+                cooldown_proxies += 1
+        return f"Total: {len(self.pool) + len(self.pool_dead)} | " + \
+              f"Dead: {len(self.pool_dead)} | " + \
+              f"Active: {active_proxies} | " + \
+              f"Cooldown: {cooldown_proxies} | " + \
+              f"Unknown: {unchecked_proxies}"
 
     def _worker(self):
         last_round = datetime.datetime.now() - datetime.timedelta(minutes=1)
         while True and not self.keyboard_interrupt:
             while last_round + datetime.timedelta(minutes=1) > datetime.datetime.now():
                 time.sleep(5)
-            last_round = datetime.datetime.now()
-            if self.debug_mode:
-                self.state()
+            mutex.acquire()
+            try:
+                last_round = datetime.datetime.now()
 
-            # Zero, check for blacklisted proxies
-            for b in [p for p in self.pool if p.state == ProxyState.DEAD]:
-                self.pool.remove(b)
-                self.pool_dead.append(b)
-                if self.debug_mode:
-                    print("[PPR] Proxy classified as Dead {b}".format(b=b))
+                # Zero, check for blacklisted proxies
+                for b in [p for p in self.pool if p.state == ProxyState.DEAD]:
+                    self.pool.remove(b)
+                    self.pool_dead.append(b)
+                    logger.debug(f"Proxy classified as Dead {b}")
 
-            # Remove proxies which are longer dead than the death period
-            i = 0
-            while i < len(self.pool_dead):
-                if self.pool_dead[i].death_date is None:
-                    self.pool_dead[i].death_date = datetime.datetime.now()
+                # Remove proxies which are longer dead than the death period
+                i = 0
+                while i < len(self.pool_dead):
+                    if self.pool_dead[i].death_date is None:
+                        self.pool_dead[i].death_date = datetime.datetime.now()
 
-                if self.pool_dead[i].death_date + self.death_keep_period < datetime.datetime.now():
-                    if self.debug_mode:
-                        print("[PPR] deleted {}".format(self.pool_dead[i]))
-                    del self.pool_dead[i]
-                else:
-                    i += 1
+                    if self.pool_dead[i].death_date + self.death_keep_period < datetime.datetime.now():
+                        logger.debug(f"deleted {self.pool_dead[i]}")
+                        del self.pool_dead[i]
+                    else:
+                        i += 1
+            finally:
+                mutex.release()
 
             # First, check if any proxies have never been checked
             unchecked_proxies = [p for p in self.pool if p.state == ProxyState.UNKNOWN]
@@ -163,8 +170,8 @@ class ProxyPool:
                 # If proxy does not work according to validator
                 chosen_proxy = random.choice(unchecked_proxies)
                 check_result = self.proxy_liveliness_check(chosen_proxy)
-                if self.debug_mode and not check_result:
-                    print("[PPR] Proxy not working {chosen_proxy}".format(**locals()))
+                if not check_result:
+                    logger.debug(f"Proxy not working {chosen_proxy})")
                 continue
 
             # Second, see if any proxies have not been checked for a long time
@@ -173,18 +180,17 @@ class ProxyPool:
             recheck_proxies = [p for p in self.pool if p.last_checked is not None and p.last_checked < delta_threshold]
 
             if len(unchecked_proxies) > 0:
-                unchecked_proxies = random.shuffle(unchecked_proxies,random.random)
+                unchecked_proxies = random.shuffle(unchecked_proxies, random.random)
             else:
                 time.sleep(3)
 
             # check in batches
             if unchecked_proxies is not None:
                 for p in unchecked_proxies[:4]:
-                     self.proxy_liveliness_check(p)
+                    self.proxy_liveliness_check(p)
 
             if len(recheck_proxies) != 0:
                 self.proxy_liveliness_check(recheck_proxies[0])
-
 
     @property
     def function_proxy_validator(self):

@@ -84,19 +84,19 @@ class ProxyObject:
         return hash(self.ip) ^ hash(self.port)
 
     def __repr__(self):
-        return "Proxy[{ip}:{port}|{response_time}|{state}]".format(ip=self.ip,port=self.port,response_time=self.response_time,state=self.state)
+        return f"Proxy[{self.ip}:{self.port}|{self.response_time}|{self.state}]"
 
     def to_dict(self):
-        return {"http": str(self.ip) + ":" + str(self.port),
-                "https": str(self.ip) + ":" + str(self.port)}
+        return {"http": f"{self.ip}:{self.port}",
+                "https": f"{self.ip}:{self.port}"}
 
     def report_request_failed(self):
         self.response_time = self._max_timeout
-        self.counter_consequtive_request_fails +=1
+        self.counter_consequtive_request_fails += 1
 
     def report_check_failed(self):
         self.response_time = self._max_timeout
-        self.counter_consequtive_check_fails +=1
+        self.counter_consequtive_check_fails += 1
         self.cooldown = datetime.timedelta(hours=1)
 
     def report_success(self):

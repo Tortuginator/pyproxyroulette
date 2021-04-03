@@ -3,16 +3,17 @@ import time
 import threading
 from .pool import ProxyPool, ProxyState
 from .defaults import defaults
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ProxyRouletteCore:
     def __init__(self,
                  func_proxy_pool_updater=defaults.get_proxies_from_web,
                  func_proxy_validator=defaults.proxy_is_working,
-                 debug_mode=False,
                  max_timeout=15):
-        self.proxy_pool = ProxyPool(debug_mode=debug_mode,
-                                    func_proxy_validator=func_proxy_validator,
+        self.proxy_pool = ProxyPool(func_proxy_validator=func_proxy_validator,
                                     max_timeout=max_timeout)
         self._current_proxy = {}
         self.proxy_pool_update_fnc = func_proxy_pool_updater
@@ -20,7 +21,6 @@ class ProxyRouletteCore:
         self.update_instance = threading.Thread(target=self._proxy_pool_update_thread)
         self.update_instance.setDaemon(True)
         self.update_instance.start()
-        self.debug_mode = debug_mode
         self.cooldown = datetime.timedelta(hours=1, minutes=5)
 
     def current_proxy(self, return_obj=False):
@@ -30,16 +30,13 @@ class ProxyRouletteCore:
 
         if self._current_proxy[current_thread] is not None and \
                 self._current_proxy[current_thread].state == ProxyState.ACTIVE:
-            if self.debug_mode:
-                print("[PPR] Proxy requested but it will not be changed")
+            logger.debug("Proxy requested but it will not be changed")
         elif self._current_proxy[current_thread] is not None:
-            if self.debug_mode:
-                print("[PPR] Current proxy not in state ACTIVE. Updating current_proxy for {current_thread} now".format(**locals()))
+            logger.debug(f"Current proxy not in state ACTIVE. Updating current_proxy for {current_thread} now")
             self._current_proxy[current_thread].cooldown = self.cooldown
             self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
         else:
-            if self.debug_mode:
-                print("[PPR] No current proxy found. Setting current_proxy for {current_thread} now".format(**locals()))
+            logging.error(f"No current proxy found. Setting current_proxy for {current_thread} now")
             self._current_proxy[current_thread] = self.proxy_pool.get_best_proxy()
 
         if return_obj:
@@ -103,3 +100,6 @@ class ProxyRouletteCore:
     @max_timeout.setter
     def max_timeout(self, value):
         self.proxy_pool.max_timeout = value
+
+    def state(self):
+        return self.proxy_pool.state()

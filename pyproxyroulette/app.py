@@ -1,42 +1,39 @@
 from .core import ProxyRouletteCore
-from .exceptions import MaxRetriesExceeded,DecoratorNotApplicable
+from .exceptions import MaxRetriesExceeded
 import requests as requests_original
 from .defaults import defaults
 import threading
+import logging
 
 PROXY_POOL_UPDATERS = dict()
+logger = logging.getLogger(__name__)
 
 
 class ProxyRoulette(object):
     def __init__(self,
-                 debug_mode=False,
                  max_retries=5,
                  max_timeout=15,
                  func_proxy_validator=defaults.proxy_is_working,
                  func_proxy_response_validator=defaults.proxy_response_validator):
 
         if len(PROXY_POOL_UPDATERS) == 0:
-            print("[PPR] Using internal default as pool updater")
+            logger.info("Using internal default as pool updater")
             func_proxy_pool_update = defaults.get_proxies_from_web
+
         else:
-            if debug_mode:
-                print("[PPR] Using decorator as pool updater origin")
+            logger.debug("Using decorator as pool updater origin")
 
             def local_updater():
                 proxies = []
                 for fname, f in PROXY_POOL_UPDATERS.items():
-                    if debug_mode:
-                        print("[PPR] calling pool updater: {fname}".format(**locals()))
+                    logger.debug("calling pool updater: {fname}".format(**locals()))
                     proxies += f()
                 return proxies
             func_proxy_pool_update = local_updater
-        self.proxy_core = ProxyRouletteCore(debug_mode=debug_mode,
-                                            max_timeout=max_timeout,
+        self.proxy_core = ProxyRouletteCore(max_timeout=max_timeout,
                                             func_proxy_validator=func_proxy_validator,
                                             func_proxy_pool_updater=func_proxy_pool_update)
         self._max_retries = max_retries
-        self.debug_mode = debug_mode
-        self.acknowledge_decorator_restrictions = False
 
         # Functions
         self.__default_proxy_response_validator = func_proxy_response_validator
@@ -71,17 +68,16 @@ class ProxyRoulette(object):
                 request_args.update(kwargs)
 
                 try:
-                    if self.debug_mode:
-                        print("[PPR] {} {} with arguments: {}".format(req_type, url, request_args))
+                    logger.debug("{} {} with arguments: {}".format(req_type, url, request_args))
                     res = method(url, **request_args)
                     temp_proxy_obj.response_time = res.elapsed.total_seconds()
 
                     if not self.__default_proxy_response_validator(res): #If not valid response:
-                        if self.debug_mode:
-                            print("[PPR] Validator noticed a invalid response")
+                        logger.debug("Validator noticed a invalid response")
                         self.proxy_core.force_update(apply_cooldown=True)
                     else:
                         return res
+
                 except (requests_original.exceptions.Timeout,
                         requests_original.exceptions.ProxyError,
                         requests_original.exceptions.ConnectionError,
@@ -91,8 +87,8 @@ class ProxyRoulette(object):
                         temp_proxy_obj.set_as_dead()
                     self.proxy_core.proxy_feedback(request_failure=True)
                     self.proxy_core.force_update()
-                    if self.debug_mode:
-                        print("[PPR] {req_type} request failed with reason: {t}".format(req_type=req_type,t=type(e).__name__))
+                    logger.warning("{req_type} request failed with reason: {t}".format(req_type=req_type,
+                                                                                       t=type(e).__name__))
 
                 except Exception as err:
                     if not err.args:
@@ -102,39 +98,8 @@ class ProxyRoulette(object):
             raise MaxRetriesExceeded('The maximum number of {}'
                                      ' retries per request has been exceeded'.format(self.max_retries))
         except KeyboardInterrupt:
-            print("[PPR] Registered Keyboard Interrupt. Terminating all threads")
+            logger.error("Registered Keyboard Interrupt. Terminating all threads")
             self.proxy_core.proxy_pool.stop()
-
-    def proxify(self):
-        def wrapper_decorator(func):
-            def func_wrapper(*args, **kwargs):
-                if "requests" not in func.__globals__.keys():
-                    raise DecoratorNotApplicable("'Requests' not imported or not imported as 'requests'")
-                tmp_reqth = self.proxy_core._current_proxy.keys()
-                tmp_cident = threading.currentThread().ident
-                if ((len(tmp_reqth) == 1 and tmp_cident not in tmp_reqth) or len(tmp_reqth) > 1) and \
-                        not self.acknowledge_decorator_restrictions:
-                    raise DecoratorNotApplicable("The decorator can not be used in a non-single-threaded environment. "
-                                                 "This exception can be disabled by setting ProxyRoulette.acknowledge_"
-                                                 "decorator_restrictions = True")
-                g = func.__globals__
-                sentinel = object()
-
-                old_value = g.get('requests', sentinel)
-                g['requests'] = self
-
-                if self.debug_mode:
-                    print("[PPR] Proxify decorator called by {}".format(func))
-                try:
-                    res = func(*args, **kwargs)
-                finally:
-                    if old_value is sentinel:
-                        del g['requests']
-                    else:
-                        g['requests'] = old_value
-                return res
-            return func_wrapper
-        return wrapper_decorator
 
     @staticmethod
     def proxy_pool_updater(func):
@@ -180,3 +145,6 @@ class ProxyRoulette(object):
     @max_retries.setter
     def max_retries(self, value):
         self._max_retries = value
+
+    def status(self):
+        return self.proxy_core.state()
