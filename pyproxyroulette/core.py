@@ -1,29 +1,30 @@
 import datetime
 import time
 import threading
-from .pool import ProxyPool, ProxyState,ProxyObject
+from .pool import ProxyPool, ProxyState, ProxyObject
 from .defaults import defaults
 import logging
+from typing import List, Union, Dict, Callable
 
 logger = logging.getLogger(__name__)
 
 
 class ProxyRouletteCore:
     def __init__(self,
-                 func_proxy_pool_updater=defaults.get_proxies_from_web,
-                 func_proxy_validator=defaults.proxy_is_working,
-                 max_timeout=15):
-        self.proxy_pool = ProxyPool(func_proxy_validator=func_proxy_validator,
-                                    max_timeout=max_timeout)
-        self._current_proxy = {}
+                 func_proxy_pool_updater: Callable = defaults.get_proxies_from_web,
+                 func_proxy_validator: Callable = defaults.proxy_is_working,
+                 max_timeout: int = 15):
+        self.proxy_pool: ProxyPool = ProxyPool(func_proxy_validator=func_proxy_validator,
+                                               max_timeout=max_timeout)
+        self._current_proxy: Dict = {}
         self.proxy_pool_update_fnc = func_proxy_pool_updater
-        self.update_interval = datetime.timedelta(minutes=20)
+        self.update_interval: datetime.timedelta = datetime.timedelta(minutes=20)
         self.update_instance = threading.Thread(target=self._proxy_pool_update_thread)
         self.update_instance.setDaemon(True)
         self.update_instance.start()
-        self.cooldown = datetime.timedelta(hours=1, minutes=5)
+        self.cooldown: datetime = datetime.timedelta(hours=1, minutes=5)
 
-    def current_proxy(self, return_obj: bool = False):
+    def current_proxy(self, return_obj: bool = False) -> Union[Dict, ProxyObject]:
         """
         Returns the proxy of the current thread. THe proxy is changed if the proxy state changes
         The proxy state may change if feedback from this or another thread is submitted which changes the state.
@@ -51,7 +52,7 @@ class ProxyRouletteCore:
             result = self._current_proxy[current_thread].to_dict()
         return result
 
-    def force_update(self, apply_cooldown: bool=False) -> ProxyObject:
+    def force_update(self, apply_cooldown: bool = False) -> Union[Dict, ProxyObject]:
         """
         Force the system to assign a new proxy to the thread. The old proxy may get a cooldown
         :param apply_cooldown: Apply a cooldown the the old proxy which prevents it from beeing used for the set cooldown period
@@ -91,32 +92,32 @@ class ProxyRouletteCore:
                 self.add_proxy(p[0], p[1], init_responsetime=p[2])
             time.sleep(self.update_interval.total_seconds())
 
-    def add_proxy(self, ip, port, init_responsetime=0):
+    def add_proxy(self, ip: str, port: int, init_responsetime: int = 0):
         self.proxy_pool.add(ip, port, init_responsetime=init_responsetime)
 
     @property
-    def function_proxy_validator(self):
+    def function_proxy_validator(self) -> Callable:
         return self.proxy_pool.function_proxy_validator
 
     @function_proxy_validator.setter
-    def function_proxy_validator(self, value):
+    def function_proxy_validator(self, value: Callable):
         self.proxy_pool.function_proxy_validator = value
 
     @property
-    def function_proxy_pool_updater(self):
+    def function_proxy_pool_updater(self) -> Callable:
         return self.proxy_pool_update_fnc
 
     @function_proxy_pool_updater.setter
-    def function_proxy_pool_updater(self, value):
+    def function_proxy_pool_updater(self, value: Callable):
         self.proxy_pool_update_fnc = value
 
     @property
-    def max_timeout(self):
+    def max_timeout(self) -> int:
         return self.proxy_pool.max_timeout
 
     @max_timeout.setter
-    def max_timeout(self, value):
+    def max_timeout(self, value: int):
         self.proxy_pool.max_timeout = value
 
-    def state(self):
+    def state(self) -> ProxyState:
         return self.proxy_pool.state()

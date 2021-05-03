@@ -1,5 +1,6 @@
 import datetime
 from enum import Enum
+from typing import Dict
 
 
 class ProxyState(Enum):
@@ -11,38 +12,38 @@ class ProxyState(Enum):
 
 
 class ProxyObject:
-    def __init__(self, _ip, _port, average_response_time=None, max_timeout=8):
-        self.ip = str(_ip).strip(" ")
-        self.port = int(_port)
-        self._max_timeout = max_timeout
-        self.last_checked = None
+    def __init__(self, _ip: str, _port: int, average_response_time: float = None, max_timeout: int = 8):
+        self.ip: str = str(_ip).strip(" ")
+        self.port: int = int(_port)
+        self._max_timeout: int = max_timeout
+        self.last_checked: datetime = None
 
         # Counter for statistics
-        self.counter_consequtive_request_fails = 0  # Consequtive failures to respond to requests.
+        self.counter_consequtive_request_fails: int = 0  # Consequtive failures to respond to requests.
 
         # Cooldown variables
-        self._cooldown = None
+        self._cooldown: bool = None
 
         # Death Date
-        self.death_date = None
+        self.death_date: datetime = None
 
         # Criteria: usability config
-        self.max_c_request_fails = 2
+        self.max_c_request_fails: int = 2
 
-        self.__response_time_total = 0
-        self.__response_counter = 0
+        self.__response_time_total: int = 0
+        self.__response_counter: int = 0
 
-        self.to_be_removed = False
+        self.to_be_removed: bool = False
         if average_response_time is not None:
-            self.__response_counter = 1
-            self.__response_time_total = float(average_response_time)
+            self.__response_counter: int = 1
+            self.__response_time_total: float = float(average_response_time)
 
         # Checks
         assert (0 <= self.port <= 65535)
         # TODO: check if valid IP
 
     @property
-    def state(self):
+    def state(self) -> ProxyState:
         if self.to_be_removed:
             return ProxyState.REMOVAL
         if self.max_c_request_fails <= self.counter_consequtive_request_fails:
@@ -55,7 +56,7 @@ class ProxyObject:
             return ProxyState.UNKNOWN
         return ProxyState.ACTIVE
 
-    def is_in_cooldown(self):
+    def is_in_cooldown(self) -> bool:
         if self._cooldown is None:
             return False
         if self._cooldown >= datetime.datetime.now():
@@ -64,29 +65,29 @@ class ProxyObject:
         return False
 
     @property
-    def cooldown(self):
+    def cooldown(self) -> bool:
         if self._cooldown is not None:
             return self._cooldown
         return False
 
     @cooldown.setter
-    def cooldown(self, _cooldown_timeperiod):
-        assert(isinstance(_cooldown_timeperiod, datetime.timedelta) or _cooldown_timeperiod is None)
+    def cooldown(self, _cooldown_timeperiod: datetime.timedelta):
+        assert (isinstance(_cooldown_timeperiod, datetime.timedelta) or _cooldown_timeperiod is None)
         if _cooldown_timeperiod is None:
             self._cooldown = None
             return
         self._cooldown = datetime.datetime.now() + _cooldown_timeperiod
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return isinstance(other, self.__class__) and other.ip == self.ip and other.port == self.port
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.ip) ^ hash(self.port)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Proxy[{self.ip}:{self.port}|{self.response_time}|{self.state}]"
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         return {"http": f"{self.ip}:{self.port}",
                 "https": f"{self.ip}:{self.port}"}
 
@@ -103,13 +104,13 @@ class ProxyObject:
         self.to_be_removed = True
 
     @property
-    def response_time(self):
+    def response_time(self) -> float:
         if self.__response_counter == 0:
             return 0
-        return float(self.__response_time_total)/self.__response_counter
+        return float(self.__response_time_total) / self.__response_counter
 
     @response_time.setter
-    def response_time(self, value):
+    def response_time(self, value: int):
         self.__response_time_total += value
         self.__response_counter += 1
 
